@@ -18,7 +18,7 @@ To allow external programs (like Python or R scripts) to access the Google Sheet
 4. **Create a Service Account**:
    - Go to **APIs & Services > Credentials**.
    - Click **Create Credentials > Service Account**.
-   - Provide a name (e.g., `sheet-monitor-bot`) and click **Create**.
+   - Provide a name (`db-watch`) and click **Create**.
    - Skip the permissions step, then click **Done**.
 
 5. **Generate JSON Credentials**:
