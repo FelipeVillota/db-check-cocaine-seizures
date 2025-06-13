@@ -25,7 +25,7 @@ To allow external programs (like Python or R scripts) to access the Google Sheet
    - In the Service Accounts list, find your new account.
    - Click the three dots on the right → **Manage keys**.
    - Click **Add Key > Create New Key**.
-   - Choose **JSON** format and download the file. Keep it safe.
+   - Choose **JSON** format and download the file (Kept safe).
 
 6. **Share Your Google Sheet with the Service Account**:
    - Open your Google Sheet.
