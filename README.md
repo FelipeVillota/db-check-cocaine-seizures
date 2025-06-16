@@ -7,9 +7,12 @@ This is a lightweight data validation tool for monitoring entries by the IC team
 - Facilitates reporting and knowledge sharing.
 - Overall: provides quality data ready to be analyzed
 
+### Who?
+MAD Unit
 
-Walkthrough on how it was set up:
-## Step 1: Enable the Google Sheets API and Create a Service Account
+
+### Walkthrough on how it was set up:
+#### Step 1: Enable the Google Sheets API and Create a Service Account
 
 To allow external programs (like Python or R scripts) to access the Google Sheet for validation and reporting:
 
