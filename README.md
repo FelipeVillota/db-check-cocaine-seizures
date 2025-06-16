@@ -12,7 +12,7 @@ It is designed to support weekly governance workflows by checking for formatting
 
 It is essential to recognize both, the database's goal and the fact that it remains a collaborative work in progress, made by multiple team members.
 
-So, as a catalyst for data quality, this script intends to:
+So, as a catalyst for data quality, this script intends to be a back-end check:
 
 1. Define rules per column
 
@@ -37,13 +37,9 @@ Columns by theme:
 | 🌱 **Origin**             | Origin country, Origin Area, Origin municipality                                                                                       |
 | 🔄 **Transit**            | Transit 1/Region, Transit 1/Country, Transit 1/Department, Transit 1/Municipality, Transit 2/Region *(note: fix casing inconsistency)* |
 
-Pilot with 3 rules: 
 
-
-
-
-### Walkthrough on how the API was set up:
-#### Step 1: Enable the Google Sheets API and Create a Service Account
+### Walkthrough on how it was set up:
+ _***Enabling the Google Sheets API and Creating a Service Account***_
 
 To allow external programs (like Python or R scripts) to access the Google Sheet for validation and reporting:
 
