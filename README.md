@@ -22,7 +22,11 @@ So, as a catalyst for data quality, this script intends to:
 
 4. Mark validation status per row
 
-6. (Optional) Use Google Sheets API to apply color highlighting
+6. (Optional) Direct color highlighting
+
+7. (Optional) Direct correction
+
+Columns by theme: 
 
 | **Topic**                 | **Variables**                                                                                                                          |
 | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
@@ -33,10 +37,12 @@ So, as a catalyst for data quality, this script intends to:
 | 🌱 **Origin**             | Origin country, Origin Area, Origin municipality                                                                                       |
 | 🔄 **Transit**            | Transit 1/Region, Transit 1/Country, Transit 1/Department, Transit 1/Municipality, Transit 2/Region *(note: fix casing inconsistency)* |
 
+Pilot with 3 rules: 
 
 
 
-### Walkthrough on how it was set up:
+
+### Walkthrough on how the API was set up:
 #### Step 1: Enable the Google Sheets API and Create a Service Account
 
 To allow external programs (like Python or R scripts) to access the Google Sheet for validation and reporting:
