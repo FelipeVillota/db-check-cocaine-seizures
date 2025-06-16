@@ -1,7 +1,7 @@
 # db-check-cocaine-seizures
 This is a lightweight database management strategy for monitoring entries by the IC team in the shared Google Sheet "incautaciones cocaina 01-02".
 
-It is designed to support weekly governance workflows by checking for formatting errors, invalid values, and data quality issues. It is multifunctional: it can flag problematic cells directly within the Google Sheet, make corrections and generate validation reports as needed.
+It is designed to support weekly governance workflows by checking for formatting errors, invalid values, and data quality issues. It is multifunctional, based on the create-read-update-delete logic: it can flag problematic cells directly within the Google Sheet, make corrections and generate validation reports as needed.
 
 ### Why?
 - Assures reproducibility, transparency and scalability
