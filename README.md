@@ -6,6 +6,17 @@ This is a lightweight data validation tool for monitoring entries by the IC team
 - Google Sheets validation is basic -> we can enforce custom rules (e.g., logical dates, quantities, relationships, normalize names, etc).
 - Facilitates reporting and knowledge sharing.
 
+### How it works
+
+| **Topic**                 | **Variables**                                                                                                                          |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| 📌 **Event Metadata**     | Type, Time unit, Date, Date 2, Year, Month, Day, Duration, Description, Source links, Tags                                             |
+| 🚨 **Drugs & Quantities** | Type Drugs, Quantity, Weight unit, seizure\_kgs                                                                                        |
+| 🚚 **Modus Operandi**     | Modus Operandi/place of seizure, Sub MO                                                                                                |
+| 📍 **Seizure Location**   | Region, Country, Department/State, Municipality/Port                                                                                   |
+| 🌱 **Origin**             | Origin country, Origin Area, Origin municipality                                                                                       |
+| 🔄 **Transit**            | Transit 1/Region, Transit 1/Country, Transit 1/Department, Transit 1/Municipality, Transit 2/Region *(note: fix casing inconsistency)* |
+
 
 
 
