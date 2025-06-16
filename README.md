@@ -5,7 +5,7 @@ This is a lightweight data validation tool for monitoring entries by the IC team
 - Good practice for reproducibility, transparency and scalability (can be applied to other relevant dbs: e.g., homicide data, etc).  
 - Google Sheets validation is basic -> we can enforce custom rules (e.g., logical dates, quantities, relationships, normalize names, etc).
 - Facilitates reporting and knowledge sharing.
-- Overall: provides quality data ready to be analyzed
+
 
 
 
