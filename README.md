@@ -1,12 +1,17 @@
 # db-check-cocaine-seizures
-This is a lightweight data validation tool for monitoring entries by the IC team in the shared Google Sheets "incautaciones cocaina 01-02". It is designed to support weekly governance workflows by checking for formatting errors, invalid values, and data quality issues. Highlights problematic rows directly in the sheet and generates structured audit reports for review.
+This is a lightweight data validation tool for monitoring entries by the IC team in the shared Google Sheet "incautaciones cocaina 01-02".
+
+It is designed to support weekly governance workflows by checking for formatting errors, invalid values, and data quality issues. It is multifunctional: it can flag problematic cells directly within the Google Sheet, make corrections and generate validation reports as needed.
 
 ### Why?
-- Good practice for reproducibility, transparency and scalability
+- An easy-to-follow database management strategy
+- Assures reproducibility, transparency and scalability
 - Complements Google Sheets basic validation -> we can enforce custom rules (e.g., logical dates, quantities, relationships, normalize names, etc).
 - Facilitates analysis and reporting.
 
-### How it works
+### How does it work?
+
+1. 
 
 | **Topic**                 | **Variables**                                                                                                                          |
 | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
