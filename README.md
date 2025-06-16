@@ -7,8 +7,6 @@ This is a lightweight data validation tool for monitoring entries by the IC team
 - Facilitates reporting and knowledge sharing.
 - Overall: provides quality data ready to be analyzed
 
-### Who?
-MAD Unit
 
 
 ### Walkthrough on how it was set up:
