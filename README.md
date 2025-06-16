@@ -6,7 +6,7 @@ It is designed to support weekly governance workflows by checking for formatting
 ### Why?
 - Assures reproducibility, transparency and scalability
 - Complements Google Sheets basic validation -> we can enforce custom rules (e.g., logical dates, quantities, relationships, normalizations, etc).
-- Facilitates analysis and reporting.
+- Facilitates supervision, analysis and reporting.
 
 ### How does it work?
 
