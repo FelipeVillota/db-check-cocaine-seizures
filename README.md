@@ -4,15 +4,18 @@ This is a lightweight database management strategy for monitoring entries by the
 It is designed to support weekly governance workflows by checking for formatting errors, invalid values, and data quality issues. It is multifunctional, based on the create-read-update-delete logic: it can flag problematic cells directly within the Google Sheet, make corrections and generate validation reports as needed.
 
 ## Why?
+The spreadsheet is where the data lives and remains a  a collaborative work in progress, shaped by multiple team members. This tool acts like a quality back-end checkpoint:
+
+- It helps us keep the data trustworthy
+- Reduces the risk of human errors
+- Clear view of how well the sheet is maintained.
 - Assures reproducibility, transparency and scalability
 - Complements Google Sheets basic validation -> we can enforce custom rules (e.g., logical dates, quantities, relationships, normalizations, etc).
 - Facilitates supervision, analysis and reporting.
 
 ### How does it work?
 
-It is essential to recognize both, the database's goal and the fact that it remains a collaborative work in progress, made by multiple team members.
-
-So, as a catalyst for data quality, this script intends to be a back-end check:
+This checkpoint can be adapted according to the database's goal.
 
 1. Define rules per column
 
