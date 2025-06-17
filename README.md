@@ -6,10 +6,18 @@ It is designed to support weekly governance workflows by checking for formatting
 ## Why?
 The spreadsheet is where the data lives. It remains a collaborative work in progress, shaped by multiple investigators. This tool acts like a back-end quality checkpoint:
 
-- Helps us keep the data and process trustworthy
-- Saves time
-- Complements Google Sheets basic validation
-- Facilitates team monitoring, analysis and reporting
+📈 Monitoring tools for data quality (completeness, consistency, uniqueness)
+
+🔍 Custom validation rules
+
+📊 KPI-based reporting
+
+🚨 Alert conditions for anomalies
+
+🎛️ Quick filters for targeted analysis
+
+✅ A script for direct edits on the Google Sheet
+
 
 ### How does it work?
 
