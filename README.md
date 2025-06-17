@@ -1,28 +1,27 @@
 # db-check-cocaine-seizures
 This is a lightweight database management strategy for monitoring entries by the IC team in the shared Google Sheet "incautaciones cocaina 01-02".
 
-It is designed to support weekly governance workflows by checking for formatting errors, invalid values, and data quality issues. It is multifunctional, based on the create-read-update-delete logic: it can flag problematic cells directly within the Google Sheet, make corrections and generate validation reports as needed.
+It is designed to support weekly governance workflows by checking for formatting errors, invalid values, data quality issues and more. 
 
 ## Why?
 The spreadsheet is where the data lives. It remains a collaborative work in progress, shaped by multiple investigators. This tool acts like a back-end quality checkpoint:
 
 - Helps us keep the data and process trustworthy
 - Saves time
-- Complements Google Sheets basic validation -> we can enforce custom rules (e.g., logical dates, quantities, relationships, normalizations, etc)
-- Clear view of how well the sheet is maintained
-- Starting place for analysis and reporting
+- Complements Google Sheets basic validation
+- Facilitates timely team monitoring, analysis and reporting
 
 ### How does it work?
 
-This checkpoint can be adapted according to the database's goal or if specific tasks are demanded.
+This simple tool is multifunctional and can be adapted according to the database's goal or to specific tasks. It is based on the create-read-update-delete logic.
 
-Three basic approaches:
+Three main approaches:
 
 1. Define ALL the rules for columns -> Create functions per rule blocks -> Apply them row-wise, collect "violations"
 
 2. Just verify -> rules are handled in the spreadsheet
 
-3. A mix of both -> hybrid management 
+3. A mix of both -> hybrid management
 
 In all the approaches we can flag or intervene directly as needed. 
 
