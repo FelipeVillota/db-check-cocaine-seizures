@@ -19,11 +19,13 @@ This checkpoint can be adapted according to the database's goal or specific task
 
 Three basic approaches:
 
-1. Define ALL the rules per column -> Create a function per rule block -> Apply them row-wise, collect "violations"
+1. Define ALL the rules for columns -> Create functions per rule blocks -> Apply them row-wise, collect "violations"
 
 2. Just verify -> rules are handled in the spreadsheet
 
 3. A mix of both -> hybrid management 
+
+In all the approaches we can flag directly or intervene as needed. 
 
 
 ### Columns by theme: 
