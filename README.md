@@ -7,13 +7,14 @@ It is designed to support weekly governance workflows by checking for formatting
 The spreadsheet is where the data lives. It remains a collaborative work in progress, shaped by multiple team members. This tool acts like a quality back-end checkpoint:
 
 - Helps us keep the data and process trustworthy
+- Saves time
 - Complements Google Sheets basic validation -> we can enforce custom rules (e.g., logical dates, quantities, relationships, normalizations, etc)
 - Clear view of how well the sheet is maintained
 - Starting place for analysis and reporting
 
 ### How does it work?
 
-This checkpoint can be adapted according to the database's goal or specific tasks. 
+This checkpoint can be adapted according to the database's goal or specific tasks.
 
 Three basic approaches:
 
