@@ -4,7 +4,7 @@ This is a lightweight database management strategy for monitoring entries by the
 It is designed to support weekly governance workflows by checking for formatting errors, invalid values, and data quality issues. It is multifunctional, based on the create-read-update-delete logic: it can flag problematic cells directly within the Google Sheet, make corrections and generate validation reports as needed.
 
 ## Why?
-The spreadsheet is where the data lives. It remains a collaborative work in progress, shaped by multiple team members. This tool acts like a quality back-end checkpoint:
+The spreadsheet is where the data lives. It remains a collaborative work in progress, shaped by multiple investigators. This tool acts like a back-end quality checkpoint:
 
 - Helps us keep the data and process trustworthy
 - Saves time
@@ -14,7 +14,7 @@ The spreadsheet is where the data lives. It remains a collaborative work in prog
 
 ### How does it work?
 
-This checkpoint can be adapted according to the database's goal or specific tasks.
+This checkpoint can be adapted according to the database's goal or if specific tasks are demanded.
 
 Three basic approaches:
 
@@ -38,6 +38,8 @@ In all the approaches we can flag or intervene directly as needed.
 | 🌱 **Origin**             | Origin country, Origin Area, Origin municipality                                                                                       |
 | 🔄 **Transit**            | Transit 1/Region, Transit 1/Country, Transit 1/Department, Transit 1/Municipality, Transit 2/Region *(note: fix casing inconsistency)* |
 
+### Basic rules:
+ 
 
 ### Walkthrough on how it was set up:
  _***Enabling the Google Sheets API and Creating a Service Account***_
