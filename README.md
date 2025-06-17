@@ -6,11 +6,10 @@ It is designed to support weekly governance workflows by checking for formatting
 ## Why?
 The spreadsheet is where the data lives and remains a  a collaborative work in progress, shaped by multiple team members. This tool acts like a quality back-end checkpoint:
 
-- It helps us keep the data and process trustworthy
-- Reduces the risk of human errors
-- Clear view of how well the sheet is maintained.
-- Complements Google Sheets basic validation -> we can enforce custom rules (e.g., logical dates, quantities, relationships, normalizations, etc).
-- Facilitates supervision, analysis and reporting.
+- Keeps our data clean and reliable
+- Complements Google Sheets basic validation -> we can enforce custom rules (e.g., logical dates, quantities, relationships, normalizations, etc)
+- Clear view of how well the sheet is maintained
+- Starting place for analysis and reporting
 
 ### How does it work?
 
@@ -24,7 +23,7 @@ Three basic approaches:
 
 3. A mix of both -> hybrid management 
 
-In all the approaches we can flag directly or intervene as needed. 
+In all the approaches we can flag or intervene directly as needed. 
 
 
 ### Columns by theme: 
