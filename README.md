@@ -13,7 +13,7 @@ The spreadsheet is where the data lives. It remains a collaborative work in prog
 
 ### How does it work?
 
-This checkpoint can be adapted according to the database's goal or specific tasks.
+This checkpoint can be adapted according to the database's goal or specific tasks. 
 
 Three basic approaches:
 
