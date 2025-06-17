@@ -13,15 +13,15 @@ The spreadsheet is where the data lives. It remains a collaborative work in prog
 
 ### How does it work?
 
-This simple tool is multifunctional and can be adapted according to the database's goal or to specific tasks. It is based on the create-read-update-delete logic.
+This tool is multifunctional and can be adapted according to the database's goal or to specific tasks. It is based on the create-read-update-delete logic.
 
-Three main approaches:
+Three simple approaches:
 
-1. Define ALL the rules for columns -> Create functions per rule blocks -> Apply them row-wise, collect "violations"
+1. Define ALL the rules for columns -> Create custom functions per rule blocks -> Apply them row-wise, collect "violations"
 
 2. Just verify -> rules are handled in the spreadsheet
 
-3. A mix of both -> hybrid management
+3. A hybrid management
 
 In all the approaches we can flag or intervene directly as needed. 
 
