@@ -1,51 +1,51 @@
 # db-check-cocaine-seizures
 This is a lightweight database management strategy for monitoring entries by the IC team in the shared Google Sheet "incautaciones cocaina 01-02".
 
-It is designed to support weekly governance workflows by checking for formatting errors, invalid values, data quality issues and more. 
+It is designed to support weekly governance workflows with:
 
-## Why?
-The spreadsheet is where the data lives. It remains a collaborative work in progress, shaped by multiple investigators. This tool acts like a back-end quality checkpoint:
-
-📈 Monitoring tools for data quality (completeness, consistency, uniqueness)
+📈 Monitoring tools for data quality
 
 🔍 Custom validation rules
 
 📊 KPI-based reporting
 
-🚨 Alert conditions for anomalies
+🚨 Alert for anomalies
 
-🎛️ Quick filters for targeted analysis
+🎛️ Quick filters for targeted analyses
 
 ✅ A script for direct edits on the Google Sheet
 
+## Why?
+The spreadsheet is where the data lives. It remains a collaborative work in progress, shaped by multiple investigators. This tool acts like a back-end quality checkpoint:
+
+- Helps us keep the data and process trustworthy
+
+- Saves time
+
+- Complements Google Sheets basic validation
+
+- Facilitates team monitoring, analysis and reporting
 
 ### How does it work?
 
-This tool is multifunctional and can be adapted according to the database's goal or to specific tasks. It is based on the create-read-update-delete logic.
+This tool is multifunctional and can be adapted according to the database's goal or to specific project tasks. It is based on the create-read-update-delete logic. Apart from checking the overall "data health", there are three approaches to validation:
 
-Three simple approaches:
-
-1. Define ALL the rules for columns -> Create custom functions per rule blocks -> Apply them row-wise, collect "violations"
-
-2. Just verify -> rules are handled in the spreadsheet
-
-3. A hybrid management
-
-In all the approaches we can flag or intervene directly as needed. 
-
+- Manage all the rules here and report
+- Just verify and report 
+- Hybrid
 
 ### Columns by theme: 
 
 | **Topic**                 | **Variables**                                                                                                                          |
 | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| 📌 **Event Metadata**     | Type, Time unit, Date, Date 2, Year, Month, Day, Duration, Description, Source links, Tags                                             |
-| 🚨 **Drugs & Quantities** | Type Drugs, Quantity, Weight unit, seizure\_kgs                                                                                        |
-| 🚚 **Modus Operandi**     | Modus Operandi/place of seizure, Sub MO                                                                                                |
-| 📍 **Seizure Location**   | Region, Country, Department/State, Municipality/Port                                                                                   |
-| 🌱 **Origin**             | Origin country, Origin Area, Origin municipality                                                                                       |
-| 🔄 **Transit**            | Transit 1/Region, Transit 1/Country, Transit 1/Department, Transit 1/Municipality, Transit 2/Region *(note: fix casing inconsistency)* |
+|  **Event Metadata**     | Type, Time unit, Date, Date 2, Year, Month, Day, Duration, Description, Source links, Tags                                             |
+|  **Drugs & Quantities** | Type Drugs, Quantity, Weight unit, seizure\_kgs                                                                                        |
+|  **Modus Operandi**     | Modus Operandi/place of seizure, Sub MO                                                                                                |
+|  **Seizure Location**   | Region, Country, Department/State, Municipality/Port                                                                                   |
+|  **Origin**             | Origin country, Origin Area, Origin municipality                                                                                       |
+|  **Transit**            | Transit 1/Region, Transit 1/Country, Transit 1/Department, Transit 1/Municipality, Transit 2/Region *(note: fix casing inconsistency)* |
 
-### Basic rules:
+
  
 
 ### Walkthrough on how it was set up:
