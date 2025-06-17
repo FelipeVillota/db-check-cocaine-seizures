@@ -15,21 +15,18 @@ The spreadsheet is where the data lives and remains a  a collaborative work in p
 
 ### How does it work?
 
-This checkpoint can be adapted according to the database's goal.
+This checkpoint can be adapted according to the database's goal or specific tasks.
 
-1. Define rules per column
+Three basic approaches:
 
-2. Create a function per rule block
+1. Define ALL the rules per column -> Create a function per rule block -> Apply them row-wise, collect "violations"
 
-3. Apply them row-wise, collecting "violations"
+2. Just verify -> rules are handled in the spreadsheet
 
-4. Mark validation status per row
+3. A mix of both -> hybrid management 
 
-6. (Optional) Direct color highlighting
 
-7. (Optional) Direct correction
-
-Columns by theme: 
+### Columns by theme: 
 
 | **Topic**                 | **Variables**                                                                                                                          |
 | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
