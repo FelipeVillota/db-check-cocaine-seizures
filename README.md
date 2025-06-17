@@ -9,7 +9,7 @@ The spreadsheet is where the data lives. It remains a collaborative work in prog
 - Helps us keep the data and process trustworthy
 - Saves time
 - Complements Google Sheets basic validation
-- Facilitates timely team monitoring, analysis and reporting
+- Facilitates team monitoring, analysis and reporting
 
 ### How does it work?
 
