@@ -28,7 +28,7 @@ The spreadsheet is where the data lives. It remains a collaborative work in prog
 
 ### How does it work?
 
-This tool is multifunctional and can be adapted according to the database's goal or to specific project tasks, following a create-read-update-delete logic. The script and associated material can be placed in a IC Github repo.
+This tool is multifunctional and can be adapted according to the database's goal or to specific project tasks, following a create-read-update-delete logic. The script and associated material can be placed in IC's Github.
 
 Apart from checking the overall "data health", there are three approaches to validation:
 
