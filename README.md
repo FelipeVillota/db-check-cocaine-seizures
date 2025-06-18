@@ -16,7 +16,7 @@ It is designed to support weekly governance workflows with:
 ✅ A script for direct edits on the Google Sheet
 
 ## Why?
-The spreadsheet is where the data lives. It remains a collaborative work in progress, shaped by multiple investigators. This tool acts like a back-end quality checkpoint:
+The spreadsheet is where the data lives. It remains a collaborative work in progress, shaped by multiple investigators. This tool acts like a back-end and dedicated quality checkpoint:
 
 - Helps us keep the data and process trustworthy
 
@@ -50,7 +50,7 @@ Apart from checking the overall "data health", there are three approaches to val
 
  
 
-### Walkthrough on how it was set up:
+### Walkthrough on how it was set up
  _***Enabling the Google Sheets API and Creating a Service Account***_
 
 To allow external programs (like Python or R scripts) to access the Google Sheet for validation and reporting:
