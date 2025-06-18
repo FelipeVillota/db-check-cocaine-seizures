@@ -36,7 +36,7 @@ Apart from checking the overall "data health", there are three approaches to val
 - Just verify and report 
 - Hybrid
 
-### Columns by theme: 
+### Variables by theme:
 
 | **Topic**                 | **Variables**                                                                                                                          |
 | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
