@@ -17,7 +17,7 @@ It is designed to support weekly governance workflows with:
 
 ## Why?
 The spreadsheet is where the data lives. It remains a collaborative work in progress, shaped by multiple investigators. This tool acts like a back-end and dedicated quality checkpoint:
-
+![alt text](image.png)
 - Helps us keep the data and process trustworthy
 
 - Saves time
