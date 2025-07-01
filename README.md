@@ -38,18 +38,17 @@ Apart from checking the overall "data health", there are three approaches to val
 
 ### Variables by theme:
 
-| **Topic**                 | **Variables**                                                                                                                          |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-|  **Event Metadata**     | Type, Time unit, Date, Date 2, Year, Month, Day, Duration, Description, Source links, Tags                                             |
-|  **Drugs & Quantities** | Type Drugs, Quantity, Weight unit, seizure\_kgs                                                                                        |
-|  **Modus Operandi**     | Modus Operandi/place of seizure, Sub MO                                                                                                |
-|  **Seizure Location**   | Region, Country, Department/State, Municipality/Port                                                                                   |
-|  **Origin**             | Origin country, Origin Area, Origin municipality                                                                                       |
-|  **Transit**            | Transit 1/Region, Transit 1/Country, Transit 1/Department, Transit 1/Municipality, Transit 2/Region *(note: fix casing inconsistency)* |
-
-
- 
-
+| **Category**           | **Variables**                                                                                                                                             |
+|------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| <mark style="background-color: #90EE90">**Event Metadata**</mark>     | <mark style="background-color: #90EE90">Type, Time unit, Date, Date 2, Year, Month, Day, Duration, Description, Source link, Project interested</mark>                                                  |
+| **Drugs & Quantities** | Type Drugs, Quantity, Weight unit, seizure_kgs                                                                                         |
+| **Modus Operandi**     | Modus Operandi/place of seizure, Sub MO                                                                                                                   |
+| **Seizure Location**   | Region, Country, Department/State, Municipality/Port                                                                                                      |
+| **Origin**             | Origin country, Origin Area, Origin municipality                                                                                                          |
+| **Transit**            | Transit 1/Region, Transit 1/country, Transit 1/Department, Transit 1/Municipality, Transit 2/ region, Transit 2/ country, Transit 2/Department, Transit 2/municipality/port |
+| **Destination**        | Destition - Region, Destition - Country, Destition - department.state, Destition - Municipality/Port, Destition 2 - Country, Destition 2 - Municipality/Port |
+| **Criminal Actors**    | Criminal group #1, Criminal group #2, Criminal group #3                                                                                                  |
+                                                       
 ### Walkthrough on how it was set up
  _***Enabling the Google Sheets API and Creating a Service Account***_
 
