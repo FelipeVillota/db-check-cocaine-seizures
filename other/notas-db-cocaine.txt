@@ -356,4 +356,5 @@ validations = extract_data_validations(
 for v in validations:
     print(v)
 
+WYSIWYG, simpler and better with each iteration
 
