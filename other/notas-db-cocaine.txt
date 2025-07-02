@@ -307,4 +307,53 @@ sheet.values().update(
 
 print("Column names updated successfully in Google Sheets!")
 
+------------------
+
+def extract_data_validations(sheet_service, spreadsheet_id, sheet_name, max_rows=200):
+    # Get sheetId
+    spreadsheet = sheet_service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
+    sheet_id = next(
+        (s['properties']['sheetId'] for s in spreadsheet['sheets'] if s['properties']['title'] == sheet_name), 
+        None
+    )
+    if sheet_id is None:
+        print(f"❌ Sheet name '{sheet_name}' not found.")
+        return []
+
+    # Fetch limited grid data only for a small range (e.g., first 200 rows)
+    sheet_data = sheet_service.spreadsheets().get(
+        spreadsheetId=spreadsheet_id,
+        ranges=[f"{sheet_name}!A1:Z{max_rows}"],  # Limit to first 26 columns and max_rows
+        fields="sheets.data.rowData.values.dataValidation"
+    ).execute()
+
+    validations = []
+    row_data = sheet_data['sheets'][0].get('data', [])[0].get('rowData', [])
+    
+    for row_idx, row in enumerate(row_data):
+        for col_idx, cell in enumerate(row.get('values', [])):
+            dv = cell.get('dataValidation')
+            if dv:
+                condition = dv.get('condition', {})
+                values = [v.get('userEnteredValue') for v in condition.get('values', [])]
+                validations.append({
+                    "row": row_idx + 1,
+                    "column": col_idx + 1,
+                    "type": condition.get('type'),
+                    "values": values
+                })
+
+    print(f"✅ Found {len(validations)} data validations in first {max_rows} rows.")
+    return validations
+
+validations = extract_data_validations(
+    sheet_service=sheet_service,
+    spreadsheet_id=TEST_SPREADSHEET_ID,
+    sheet_name="2025",
+    max_rows=300  # Tune as needed
+)
+
+for v in validations:
+    print(v)
+
 
