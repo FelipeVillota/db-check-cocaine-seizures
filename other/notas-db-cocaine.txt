@@ -1,0 +1,310 @@
+#====== RUN ONLY FOR TESTS =========
+ 
+# Create a copy of the latest version of the original spreadsheet in Google Drive. 
+
+# Create dated title for demo/test copy
+today_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+copy_title = f'Validation Test Copy - {today_str}'
+
+# Create a copy with today's date
+copy_body = {'name': copy_title, 'parents': ['root']}
+copied_file = drive_service.files().copy(
+    fileId=ORIGINAL_SPREADSHEET_ID,
+    body=copy_body
+).execute()
+
+# Use the ID of the new copy for analysis
+SPREADSHEET_ID = copied_file['id']
+
+print(f"✅ Spreadsheet copied on {today_str}. New ID: {SPREADSHEET_ID}")
+
+# URL
+print(f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}")
+
+
+# List of email addresses to share with
+email_list = [
+    'lvillota@insightcrime.org',
+    'villotamacias@gmail.com'#,
+    #'jmanjarres@insightcrime.org',
+    #'cnewton@insightcrime.org',
+    #'mcavalari@insightcrime.org'
+]
+
+# Share with each email in the list
+for email in email_list:
+    drive_service.permissions().create(
+        fileId=SPREADSHEET_ID,
+        body={
+            'type': 'user',
+            'role': 'writer',
+            'emailAddress': email
+        },
+        fields='id'
+    ).execute()
+    print(f"Shared with {email}")
+
+# URL
+print(f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}")
+
+
+
+
+
+
+--------------
+
+
+# Update a column name directly in Google Sheets
+def update_column_name(old_name, new_name):
+    # Get headers
+    headers = sheet.values().get(spreadsheetId=SPREADSHEET_ID, range='2025!1:1').execute()['values'][0]
+    
+    # Find and update column
+    if old_name in headers:
+        col_index = headers.index(old_name)
+        col_letter = chr(65 + col_index)  # Convert to A, B, C...
+        
+        # Update in sheet
+        sheet.values().update(
+            spreadsheetId=SPREADSHEET_ID,
+            range=f'2025!{col_letter}1',
+            valueInputOption='RAW',
+            body={'values': [[new_name]]}
+        ).execute()
+        
+        print(f"✅ '{old_name}' → '{new_name}'")
+    else:
+        print(f"❌ '{old_name}' not found")
+
+# Function usage
+update_column_name('Type', 'TIPO')
+
+# Refresh DataFrame
+result = sheet.values().get(spreadsheetId=SPREADSHEET_ID, range=RANGE_NAME).execute()
+values = result.get('values', [])
+df = pd.DataFrame(values[1:], columns=values[0])
+
+
+
+# Format dates directly in Google Sheets
+def format_dates(date_column_name='Date'):
+    # Get all data
+    result = sheet.values().get(spreadsheetId=SPREADSHEET_ID, range=RANGE_NAME).execute()
+    values = result.get('values', [])
+    
+    if not values:
+        print("❌ No data found")
+        return
+    
+    headers = values[0]
+    if date_column_name not in headers:
+        print(f"❌ '{date_column_name}' column not found")
+        return
+    
+    col_index = headers.index(date_column_name)
+    col_letter = chr(65 + col_index)
+    
+    # Process dates
+    updated_values = []
+    for i, row in enumerate(values[1:], 2):  # Start from row 2
+        if col_index < len(row) and row[col_index]:
+            try:
+                # Parse date (assuming YYYY-MM-DD format)
+                date_obj = datetime.strptime(row[col_index], "%Y-%m-%d")
+                # Format to DD-MM-YYYY
+                formatted_date = date_obj.strftime("%d-%m-%Y")
+                updated_values.append([formatted_date])
+            except ValueError:
+                # Keep original if can't parse
+                updated_values.append([row[col_index]])
+        else:
+            updated_values.append([''])
+    
+    # Update the entire date column
+    if updated_values:
+        sheet.values().update(
+            spreadsheetId=SPREADSHEET_ID,
+            range=f'2025!{col_letter}2:{col_letter}{len(updated_values)+1}',
+            valueInputOption='RAW',
+            body={'values': updated_values}
+        ).execute()
+        
+        print(f"✅ Dates formatted to DD-MM-YYYY in column {col_letter}")
+
+# Function usage
+format_dates('Date')  # or whatever your date column is called
+
+
+# Date must not be empty
+def validate_dates(df, date_column='Date'):
+    if date_column not in df.columns:
+        print(f"❌ Column '{date_column}' not found")
+        return
+    
+    # Check for empty dates
+    empty_dates = df[df[date_column].isna()]
+    
+    if not empty_dates.empty:
+        print(f"❌ Found {len(empty_dates)} rows with empty '{date_column}' dates:")
+        print(empty_dates)
+    else:
+        print(f"✅ All '{date_column}' dates are filled")
+
+
+validate_dates(df)
+
+
+# Why is there Duration if there is no Date 2?  
+def validate_duration(df, date_column='Date', date2_column='Date 2', duration_column='Duration'):
+    if date_column not in df.columns or date2_column not in df.columns or duration_column not in df.columns:
+        print(f"❌ One or more columns '{date_column}', '{date2_column}', or '{duration_column}' not found")
+        return
+    
+    # Check for rows where Date 2 is empty but Duration is filled
+    invalid_rows = df[(df[date2_column].isna()) & (df[duration_column].notna())]
+    
+    if not invalid_rows.empty:
+        print(f"❌ Found {len(invalid_rows)} rows with '{duration_column}' filled but '{date2_column}' empty:")
+        print(invalid_rows)
+    else:
+        print(f"✅ All '{duration_column}' values are valid with respect to '{date2_column}'")
+
+validate_duration(df)
+
+
+# Check if Date 2 is filed, then Time unit is not Individual
+def validate_time_unit(df, date2_column='Date 2', time_unit_column='Time unit'):
+    if date2_column not in df.columns or time_unit_column not in df.columns:
+        print(f"❌ One or more columns '{date2_column}' or '{time_unit_column}' not found")
+        return
+    
+    # Check for rows where Date 2 is filled but Time unit is 'Individual'
+    invalid_rows = df[(df[date2_column].notna()) & (df[time_unit_column] == 'Individual')]
+    
+    if not invalid_rows.empty:
+        print(f"❌ Found {len(invalid_rows)} rows with '{time_unit_column}' as 'Individual' but '{date2_column}' filled:")
+        print(invalid_rows)
+    else:
+        print(f"✅ All '{time_unit_column}' values are valid with respect to '{date2_column}'") 
+
+validate_time_unit(df)
+
+
+----------------------
+
+
+# 1. Identify mismatches between 'Weight unit' and 'Quantity' vs 'seizure_kgs'
+df['kg_unit_mismatch'] = (
+    (df['Weight unit'].str.lower() == 'Kilogram') &
+    (df['Quantity'] != df['seizure_kgs'])
+)
+
+# 2. Count of mismatches by weight unit
+unit_mismatch_counts = df[df['kg_unit_mismatch']].groupby('Weight unit').size().reset_index(name='count')
+
+# 3. Plot mismatches
+plt.figure(figsize=(8, 5))
+sns.barplot(data=unit_mismatch_counts, x='Weight unit', y='count', palette='Reds')
+plt.title("Mismatches Between Quantity and Seizure_kgs by Weight Unit")
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
+
+-------
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+plt.figure(figsize=(10, 6))
+
+# Boxplot with grey boxes
+sns.boxplot(data=df, x='Type Drugs', y='seizure_kgs', color='grey')
+
+# Log scale on y-axis
+plt.yscale('log')
+
+# Red horizontal line at y=1 (which is 10^0)
+plt.axhline(y=1, color='red', linestyle='--', linewidth=1.5)
+
+plt.title("Log-Scale Seizure_kgs Distribution by Drug Type")
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
+
+-------
+
+
+# Convert and clean seizure data
+df['seizure_kgs'] = pd.to_numeric(df['seizure_kgs'], errors='coerce')
+
+# Create pivot tables with matching structure
+pivot_data = df.groupby(['Year', 'Month']).agg(
+    seizure_kg=('seizure_kgs', 'sum'),
+    event_count=('seizure_kgs', 'count')
+).unstack(level=0)
+
+# Extract components
+seizure_kg = pivot_data['seizure_kg']
+event_counts = pivot_data['event_count']
+
+# Fill NaN values with 0 if appropriate, or use mask
+seizure_kg_filled = seizure_kg.fillna(0)
+
+# Plot combined heatmap
+plt.figure(figsize=(12,6))
+ax = sns.heatmap(
+    seizure_kg_filled.sort_index(ascending=False),
+    cmap="Greys",
+    annot=event_counts.sort_index(ascending=False),
+    fmt='g',
+    cbar_kws={'label': 'Total Seizure (kg)'},
+    linewidths=0.5,  # Adds grid lines between cells
+    linecolor='lightgray'  # Color for grid lines
+)
+
+# Title and labels
+plt.title("Monthly Seizures by Year\n(Event Counts shown as numbers, Quantity shown by shading)")
+plt.ylabel("Month")
+plt.xlabel("Year")
+
+# Rotate year labels if needed
+ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha='right')
+
+plt.tight_layout()
+plt.show()
+-----
+
+
+
+# Convert NA values to empty strings
+df = df.fillna('')
+
+# Prepare data to write back to Google Sheet
+headers = list(df.columns)
+data = df.values.tolist()
+updated_values = [headers] + data
+
+# Clear the existing data first
+sheet.values().clear(
+    spreadsheetId=TEST_SPREADSHEET_ID,
+    range=RANGE_NAME
+).execute()
+
+# Update with new data
+update_request = {
+    'values': updated_values
+}
+
+sheet.values().update(
+    spreadsheetId=TEST_SPREADSHEET_ID,
+    range=RANGE_NAME,
+    valueInputOption='RAW',
+    body=update_request
+).execute()
+
+print("Column names updated successfully in Google Sheets!")
+
+
