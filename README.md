@@ -80,3 +80,7 @@ To allow external programs (like Python or R scripts) to access the Google Sheet
    - Click **Share**.
    - Add the Service Account’s email address (db-watch@summer-sector-439022-v6.iam.gserviceaccount.com).
    - Give it **Editor** access.
+
+
+### Tutorial to run tests on the database
+
