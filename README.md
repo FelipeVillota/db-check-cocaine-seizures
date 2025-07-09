@@ -48,8 +48,12 @@ Apart from checking the overall "data health", there are three approaches to val
 | **Transit**            | Transit 1/Region, Transit 1/country, Transit 1/Department, Transit 1/Municipality, Transit 2/ region, Transit 2/ country, Transit 2/Department, Transit 2/municipality/port |
 | **Destination**        | Destition - Region, Destition - Country, Destition - department.state, Destition - Municipality/Port, Destition 2 - Country, Destition 2 - Municipality/Port |
 | **Criminal Actors**    | Criminal group #1, Criminal group #2, Criminal group #3                                                                                                  |
-                                                       
-### Walkthrough on how it was set up
+
+
+
+
+
+### Walkthrough on how the API was set up
  _***Enabling the Google Sheets API and Creating a Service Account***_
 
 To allow external programs (like Python or R scripts) to access the Google Sheet for validation and reporting:
@@ -82,5 +86,4 @@ To allow external programs (like Python or R scripts) to access the Google Sheet
    - Give it **Editor** access.
 
 
-### Tutorial to run tests on the database
 
