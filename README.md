@@ -17,7 +17,7 @@ It is designed to support weekly governance workflows with:
 
 ## Why?
 The spreadsheet is where the data lives. It remains a collaborative work in progress, shaped by multiple investigators. This tool acts like a back-end and dedicated quality checkpoint:
-![alt text](image.png)
+![alt text](image-why.png)
 - Helps us keep the data and process trustworthy
 
 - Saves time
@@ -26,17 +26,25 @@ The spreadsheet is where the data lives. It remains a collaborative work in prog
 
 - Facilitates team monitoring, analysis and reporting
 
-### How does it work?
+## How does it work?
 
 This tool is multifunctional and can be adapted according to the database's goal or to specific project tasks, following a create-read-update-delete logic. The script and associated material can be placed in IC's Github.
 
 Apart from checking the overall "data health", there are three approaches to validation:
 
-- Manage all the rules here and report
-- Just verify and report 
-- Hybrid
+- Manage all the rules here and report <span style="color: red; font-weight: bold;">(impractical)</span>
+- Just monitor here and report <span style="color: red; font-weight: bold;">(missed opportunities)</span>
+- Hybrid <span style="color: green; font-weight: bold;">(adequate)</span>
 
-### Variables by theme:
+
+<div style="border: 2px solid green; padding: 10px; border-radius: 5px; text-align: center;"> <b>We work with what already exists + leverage back-end functionalities.</b> </div>
+
+## What is the workflow?
+
+[![alt text](image-workflow.png)](https://app.eraser.io/workspace/piMlbKXsypAm5EdTYQHk?origin=share)
+
+
+## We work by groups of variables
 
 | **Category**           | **Variables**                                                                                                                                             |
 |------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -47,13 +55,9 @@ Apart from checking the overall "data health", there are three approaches to val
 | **Origin**             | Origin country, Origin Area, Origin municipality                                                                                                          |
 | **Transit**            | Transit 1/Region, Transit 1/country, Transit 1/Department, Transit 1/Municipality, Transit 2/ region, Transit 2/ country, Transit 2/Department, Transit 2/municipality/port |
 | **Destination**        | Destition - Region, Destition - Country, Destition - department.state, Destition - Municipality/Port, Destition 2 - Country, Destition 2 - Municipality/Port |
-| **Criminal Actors**    | Criminal group #1, Criminal group #2, Criminal group #3                                                                                                  |
+| **Criminal Actors**    | Criminal group #1, Criminal group #2, Criminal group #3                    
 
-
-
-
-
-### Walkthrough on how the API was set up
+## Walkthrough on how the API was set up
  _***Enabling the Google Sheets API and Creating a Service Account***_
 
 To allow external programs (like Python or R scripts) to access the Google Sheet for validation and reporting:
