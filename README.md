@@ -58,7 +58,7 @@ Apart from checking the overall "data health", there are three approaches to val
 | **Category**           | **Variables**                                                                                                                                             |
 |------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | <mark style="background-color: #90EE90">**Event Metadata**</mark>     | <mark style="background-color: #90EE90">Type, Time unit, Date, Date 2, Year, Month, Day, Duration, Description, Source link, Project interested</mark>                                                  |
-| **Drugs & Quantities** | Type Drugs, Quantity, Weight unit, seizure_kgs                                                                                         |
+| <mark style="background-color: #90EE90">**Drugs & Quantities**</mark>  |<mark style="background-color: #90EE90"> Type Drugs, Quantity, Weight unit, seizure_kgs </mark>                                                                          |
 | **Modus Operandi**     | Modus Operandi/place of seizure, Sub MO                                                                                                                   |
 | **Seizure Location**   | Region, Country, Department/State, Municipality/Port                                                                                                      |
 | **Origin**             | Origin country, Origin Area, Origin municipality                                                                                                          |
