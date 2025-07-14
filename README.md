@@ -55,16 +55,16 @@ Apart from checking the overall "data health", there are three approaches to val
 
 ## We work by groups of variables
 
-| **Category**           | **Variables**                                                                                                                                             |
-|------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| <mark style="background-color: #90EE90">**Event Metadata**</mark>     | <mark style="background-color: #90EE90">Type, Time unit, Date, Date 2, Year, Month, Day, Duration, Description, Source link, Project interested</mark>                                                  |
-| <mark style="background-color: #90EE90">**Drugs & Quantities**</mark>  |<mark style="background-color: #90EE90"> Type Drugs, Quantity, Weight unit, seizure_kgs </mark>                                                                          |
-| **Modus Operandi**     | Modus Operandi/place of seizure, Sub MO                                                                                                                   |
-| **Seizure Location**   | Region, Country, Department/State, Municipality/Port                                                                                                      |
-| **Origin**             | Origin country, Origin Area, Origin municipality                                                                                                          |
-| **Transit**            | Transit 1/Region, Transit 1/country, Transit 1/Department, Transit 1/Municipality, Transit 2/ region, Transit 2/ country, Transit 2/Department, Transit 2/municipality/port |
-| **Destination**        | Destition - Region, Destition - Country, Destition - department.state, Destition - Municipality/Port, Destition 2 - Country, Destition 2 - Municipality/Port |
-| **Criminal Actors**    | Criminal group #1, Criminal group #2, Criminal group #3                    
+| **Category**                                   | **Variables**                                                                                                                                                                                                                                    | **Status**        |
+|-----------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------|
+| <mark style="background-color: #90EE90">**Event Metadata**</mark>     | <mark style="background-color: #90EE90">Type, Time unit, Date, Date 2, Year, Month, Day, Duration, Description, Source link, Project interested</mark>                                                                                             | Done              |
+| <mark style="background-color: #90EE90">**Drugs & Quantities**</mark>  | <mark style="background-color: #90EE90">Type Drugs, Quantity, Weight unit, seizure_kgs</mark>                                                                                                               | Finish by 18/07   |
+| **Modus Operandi**                            | Modus Operandi/place of seizure, Sub MO                                                                                                                                                                                                           | Finish by 25/07   |
+| **Seizure Location**                          | Region, Country, Department/State, Municipality/Port                                                                                                                                                                                              | Finish by 01/08   |
+| **Origin**                                    | Origin country, Origin Area, Origin municipality                                                                                                                                                                                                  | Finish by 08/08   |
+| **Transit**                                   | Transit 1/Region, Transit 1/Country, Transit 1/Department, Transit 1/Municipality, Transit 2/ region, Transit 2/ country, Transit 2/Department, Transit 2/municipality/port                                                                         | Finish by 15/08   |
+| **Destination**                               | Destition - Region, Destition - Country, Destition - department.state, Destition - Municipality/Port, Destition 2 - Country, Destition 2 - Municipality/Port                                                                                       | Finish by 22/08   |
+| **Criminal Actors**                           | Criminal group #1, Criminal group #2, Criminal group #3                                                                                                                                                                                            | Finish by 29/08   |
 
 ## Walkthrough on how the API was set up
  _***Enabling the Google Sheets API and Creating a Service Account***_
