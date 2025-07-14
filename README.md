@@ -1,7 +1,16 @@
 # db-check-cocaine-seizures
+
+<div style="text-align:center;font-family:sans-serif;margin:20px 0;max-width:600px;margin:auto;font-size:14px;font-weight:300;color:#777">
+  <img src="1000+aToNoFcoke+22.jpg" alt="NFT by Camilo Restrepo" style="max-width:100%;border:1px solid #eee">
+  <p style="font-style:italic;margin:8px 15px;line-height:1.4;font-weight:300">One-Kilo Package of Cryptococaine #1000. Image taken from the NFT collection <a href="https://camilorestrepo.co/#/a-ton-of-coke/" target="_blank" style="color:#06c;font-weight:400">A Ton of Coke</a> 
+by Colombian artist Camilo Restrepo.</p>
+</div>
+
+<br><br>
+
 This is a lightweight database management strategy for monitoring entries by the IC team in the shared Google Sheet "incautaciones cocaina 01-02".
 
-It is designed to support weekly governance workflows with:
+It is designed to support data governance workflows with:
 
 📈 Monitoring tools for data quality
 
