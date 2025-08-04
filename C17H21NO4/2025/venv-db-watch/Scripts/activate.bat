@@ -8,7 +8,7 @@ if defined _OLD_CODEPAGE (
     "%SystemRoot%\System32\chcp.com" 65001 > nul
 )
 
-set "VIRTUAL_ENV=C:\Users\USER\Desktop\ic\db-check-cocaine-seizures\venv-db-watch"
+set "VIRTUAL_ENV=C:\Users\USER\Desktop\codebaker\all_python\db-check\C17H21NO4\2025\venv-db-watch"
 
 if not defined PROMPT set PROMPT=$P$G
 
