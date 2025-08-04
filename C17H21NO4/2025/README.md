@@ -26,7 +26,7 @@ It is designed to support data governance workflows with:
 
 ## Why?
 The spreadsheet is where the data lives. It remains a collaborative work in progress, shaped by multiple investigators. This tool acts like a back-end and dedicated quality checkpoint:
-![alt text](C17H21NO4/2025/other/readme_images/image-why.png)
+![alt text](https://github.com/FelipeVillota/db-check/blob/main/C17H21NO4/2025/other/readme_images/image-why.png)
 - Helps us keep the data and process trustworthy
 
 - Saves time
@@ -50,7 +50,7 @@ Apart from checking the overall "data health", there are three approaches to val
 
 ## What is the workflow?
 
-[![alt text](C17H21NO4/2025/other/readme_images/image-workflow.png)](https://app.eraser.io/workspace/piMlbKXsypAm5EdTYQHk?origin=share)
+[![alt text](https://github.com/FelipeVillota/db-check/blob/main/C17H21NO4/2025/other/readme_images/image-workflow.png)](https://app.eraser.io/workspace/piMlbKXsypAm5EdTYQHk?origin=share)
 
 
 ## We work by groups of variables
