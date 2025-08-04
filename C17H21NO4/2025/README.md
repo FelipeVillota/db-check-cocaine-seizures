@@ -1,7 +1,7 @@
 # db-check-cocaine-seizures
 
 <div style="text-align:center;font-family:sans-serif;margin:20px 0;max-width:600px;margin:auto;font-size:14px;font-weight:300;color:#777">
-  <img src="1000+aToNoFcoke+22.jpg" alt="NFT by Camilo Restrepo" style="max-width:100%;border:1px solid #eee">
+  <img src="C17H21NO4\2025\other\readme_images\1000+aToNoFcoke+22.jpg" alt="NFT by Camilo Restrepo" style="max-width:100%;border:1px solid #eee">
   <p style="font-style:italic;margin:8px 15px;line-height:1.4;font-weight:300">One-Kilo Package of Cryptococaine #1000. Image taken from the NFT collection <a href="https://camilorestrepo.co/#/a-ton-of-coke/" target="_blank" style="color:#06c;font-weight:400">A Ton of Coke</a> 
 by Colombian artist Camilo Restrepo.</p>
 </div>
@@ -26,7 +26,7 @@ It is designed to support data governance workflows with:
 
 ## Why?
 The spreadsheet is where the data lives. It remains a collaborative work in progress, shaped by multiple investigators. This tool acts like a back-end and dedicated quality checkpoint:
-![alt text](image-why.png)
+![alt text](C17H21NO4\2025\other\readme_images\image-why.png)
 - Helps us keep the data and process trustworthy
 
 - Saves time
@@ -50,7 +50,7 @@ Apart from checking the overall "data health", there are three approaches to val
 
 ## What is the workflow?
 
-[![alt text](image-workflow.png)](https://app.eraser.io/workspace/piMlbKXsypAm5EdTYQHk?origin=share)
+[![alt text](C17H21NO4\2025\other\readme_images\image-workflow.png)](https://app.eraser.io/workspace/piMlbKXsypAm5EdTYQHk?origin=share)
 
 
 ## We work by groups of variables
