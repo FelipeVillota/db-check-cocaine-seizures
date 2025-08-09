@@ -358,3 +358,198 @@ for v in validations:
 
 WYSIWYG, simpler and better with each iteration
 
+
+
+--------------
+
+
+def event_metadata_report(df):
+    report = []
+    issues = {}
+    total_problems = 0  # Initialize counter for total problems
+    
+    # Convert pandas indices to spreadsheet rows (+2 for header + zero-index)
+    def to_excel_rows(indices):
+        return [i+2 for i in indices]  # For spreadsheet row reference
+
+    # Validation 1: Empty Dates
+    if 'date_1' not in df.columns:
+        report.append(("❌ Missing Column", "'date' column not found"))
+        total_problems += 1  # Count missing column as a problem
+    else:
+        empty_dates = df[df['date_1'].isna()]
+        if not empty_dates.empty:
+            issue_rows = empty_dates.index.tolist()
+            excel_rows = to_excel_rows(issue_rows)
+            issues['empty_dates'] = {
+                'indices': issue_rows,
+                'excel_rows': excel_rows,
+                'sample': empty_dates
+            }
+            report.append(("❌ Empty Dates", 
+                         f"{len(empty_dates)} rows at spreadsheet rows: {excel_rows}"))
+            total_problems += len(empty_dates)
+
+    # Validation 2: Duration without Date 2
+    missing_cols = [col for col in ['date_1', 'date_2', 'duration'] if col not in df.columns]
+    if missing_cols:
+        report.append(("❌ Missing Columns", f"Columns not found: {', '.join(missing_cols)}"))
+        total_problems += len(missing_cols)  # Count each missing column
+    else:
+        invalid_duration = df[(df['date_2'].isna()) & (df['duration'].notna())]
+        if not invalid_duration.empty:
+            issue_rows = invalid_duration.index.tolist()
+            excel_rows = to_excel_rows(issue_rows)
+            issues['invalid_duration'] = {
+                'indices': issue_rows,
+                'excel_rows': excel_rows,
+                'sample': invalid_duration
+            }
+            report.append(("❌ Duration Conflict", 
+                         f"{len(invalid_duration)} rows at spreadsheet rows: {excel_rows}"))
+            total_problems += len(invalid_duration)
+
+    # Validation 3: Time unit inconsistency
+    if 'time_unit' not in df.columns:
+        report.append(("❌ Missing Column", "'time_unit' column not found"))
+        total_problems += 1  # Count missing column
+    else:
+        invalid_time = df[(df['date_2'].notna()) & (df['time_unit'] == 'Individual')]
+        if not invalid_time.empty:
+            issue_rows = invalid_time.index.tolist()
+            excel_rows = to_excel_rows(issue_rows)
+            issues['invalid_time'] = {
+                'indices': issue_rows,
+                'excel_rows': excel_rows,
+                'sample': invalid_time
+            }
+            report.append(("❌ Time Unit Conflict", 
+                         f"{len(invalid_time)} rows at spreadsheet rows: {excel_rows}"))
+            total_problems += len(invalid_time) 
+
+    # Print formatted report
+    print("="*80)
+    print(f"EVENT METADATA REPORT (Problematic Rows in Total: {total_problems})".center(80))
+    print("="*80)
+    
+    # Summary section
+    print("\nSUMMARY:")
+    for check, message in report:
+        print(f"{check:<30} {message}")
+    
+    # Problematic rows
+    print("\n"+ "="*80)
+    print("PROBLEMATIC ROWS".center(80))
+    print("="*80)
+    
+    for issue_name, data in issues.items():
+        if len(data['indices']) > 0:
+            print(f"\n🔴 {issue_name.replace('_', ' ').upper()} ({len(data['indices'])} ROWS)")
+            print(f"Spreadsheet Rows: {data['excel_rows']}")
+            print("\nProblematic Data:")
+            print(data['sample'].to_string(index=False))
+            print("-"*40)
+    
+    print("\n" + "="*80)
+    print("ℹ️ Spreadsheet rows account for header row (pandas index + 2)")
+    print("="*80)
+    
+    return issues
+
+# Usage
+validation_results = event_metadata_report(df)
+
+
+def apply_conditional_formatting(sheet_service, spreadsheet_id, sheet_name, rows_to_highlight):
+    """Apply RED background formatting to specified rows."""
+    if not rows_to_highlight:
+        print("No rows to highlight")
+        return
+    
+    # Build conditional formatting rules (batch all rows in one request for efficiency)
+    requests = {
+        "requests": [
+            {
+                "addConditionalFormatRule": {
+                    "rule": {
+                        "ranges": [
+                            {
+                                "sheetId": sheet_name,  # This should be the sheet ID, not name
+                                "startRowIndex": row - 1,  # Convert to 0-based index
+                                "endRowIndex": row,       # End is exclusive
+                                "startColumnIndex": 0,
+                                "endColumnIndex": 0      # Applies to all existing and future columns
+                            } for row in rows_to_highlight
+                        ],
+                        "booleanRule": {
+                            "format": {
+                                "backgroundColor": {
+                                    "red": 1.0,
+                                    "green": 0.6,
+                                    "blue": 0.6
+                                }
+                            },
+                            "condition": {
+                                "type": "CUSTOM_FORMULA",
+                                "values": [
+                                    {
+                                        "userEnteredValue": "=TRUE"
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    "index": 0
+                }
+            }
+        ]
+    }
+    
+    try:
+        # First we need to get the sheet ID from the sheet name
+        spreadsheet = sheet_service.spreadsheets().get(
+            spreadsheetId=spreadsheet_id,
+            fields="sheets(properties(sheetId,title))"
+        ).execute()
+        
+        sheet_id = None
+        for sheet in spreadsheet['sheets']:
+            if sheet['properties']['title'] == sheet_name:
+                sheet_id = sheet['properties']['sheetId']
+                break
+        
+        if not sheet_id:
+            print(f"Sheet '{sheet_name}' not found")
+            return
+        
+        # Update the requests with the correct sheet IDs
+        for request in requests['requests']:
+            for range_ in request['addConditionalFormatRule']['rule']['ranges']:
+                range_['sheetId'] = sheet_id
+        
+        # Execute the request
+        response = sheet_service.spreadsheets().batchUpdate(
+            spreadsheetId=spreadsheet_id,
+            body=requests
+        ).execute()
+        
+        print(f"Successfully highlighted {len(rows_to_highlight)} rows in red")
+        
+    except Exception as e:
+        print(f"Error applying conditional formatting: {str(e)}")
+
+# Get all problematic rows from validation results
+all_problem_rows = []
+for issue in validation_results.values():
+    all_problem_rows.extend(issue['excel_rows'])
+
+# Remove duplicates and sort
+all_problem_rows = sorted(list(set(all_problem_rows)))
+
+# Apply the formatting
+apply_conditional_formatting(
+    sheet_service=sheet_service,
+    spreadsheet_id=ORIGINAL_SPREADSHEET_ID,
+    sheet_name=RANGE_NAME, 
+    rows_to_highlight=all_problem_rows
+)
