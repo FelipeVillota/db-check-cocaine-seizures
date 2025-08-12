@@ -553,3 +553,163 @@ apply_conditional_formatting(
     sheet_name=RANGE_NAME, 
     rows_to_highlight=all_problem_rows
 )
+
+-------------------
+
+def drugs_and_quantities_report(df):
+    report = []
+    issues = {}
+    total_problems = 0
+
+    def to_excel_rows(indices):
+        return [i + 2 for i in indices]  # For spreadsheet row reference
+
+    # Validation 1: Missing or Unknown Types of Drugs
+    if 'drug_type' not in df.columns:
+        report.append(("❌ Missing Column", "'drug_type' column not found"))
+        total_problems += 1  # Count missing column as a problem
+    else:
+        invalid_drugs = df[df['drug_type'].isna() | df['drug_type'].str.lower().isin(['', 'unknown', 'n/a', 'na'])]
+        if not invalid_drugs.empty:
+            issue_rows = invalid_drugs.index.tolist()
+            excel_rows = to_excel_rows(issue_rows)
+            issues['invalid_drug_type'] = {
+                'indices': issue_rows,
+                'excel_rows': excel_rows,
+                'sample': invalid_drugs
+            }
+            report.append(("❌ Invalid Drug Types", 
+                         f"{len(invalid_drugs)} rows at spreadsheet rows: {excel_rows}"))
+            total_problems += len(invalid_drugs)
+
+    # Validation 2: Missing, Not numeric quantities or ≤ 0 
+    if 'quantity' not in df.columns:
+        report.append(("❌ Missing Column", "'quantity' column not found"))
+        total_problems += 1
+    else:
+        numeric_qty = pd.to_numeric(df['quantity'], errors='coerce')
+        non_numeric_qty = df[numeric_qty.isna()]
+        zero_or_negative_qty = df[(numeric_qty.notna()) & (numeric_qty <= 0)]
+        qty_issues = pd.concat([non_numeric_qty, zero_or_negative_qty]).drop_duplicates()
+        if not qty_issues.empty:
+            issue_rows = qty_issues.index.tolist()
+            excel_rows = to_excel_rows(issue_rows)
+            issues['invalid_quantity'] = {
+                'indices': issue_rows,
+                'excel_rows': excel_rows,
+                'sample': qty_issues
+            }
+            report.append(("❌ Invalid Quantities", 
+                         f"{len(qty_issues)} rows at spreadsheet rows: {excel_rows}"))
+            total_problems += len(qty_issues)
+
+    # Validation 3: Missing, Invalid or Unrecognized Weight Units
+    if 'weight_unit' not in df.columns:
+        report.append(("❌ Missing Column", "'weight_unit' column not found"))
+        total_problems += 1
+    else:
+        valid_units = dropdown_options.get('weight_unit', [])
+        valid_units_lower = [str(unit).lower() for unit in valid_units]
+        
+        invalid_units = df[
+            ~df['weight_unit'].astype(str).str.lower().isin(valid_units_lower)
+            | df['weight_unit'].isna()
+        ]
+        
+        if not invalid_units.empty:
+            issue_rows = invalid_units.index.tolist()
+            excel_rows = to_excel_rows(issue_rows)
+            issues['invalid_weight_unit'] = {
+                'indices': issue_rows,
+                'excel_rows': excel_rows,
+                'sample': invalid_units,
+                'valid_options': valid_units
+            }
+            report.append((
+                "❌ Invalid Weight Units", 
+                f"{len(invalid_units)} rows with invalid/missing units at spreadsheet rows: {excel_rows}. "
+                f"Valid options are: {', '.join(valid_units)}"
+            ))
+            total_problems += len(invalid_units)
+
+    # Validation 4: Missing, Not numeric or Negative Seizure in Kilograms
+    if 'seizure_kg' not in df.columns:
+        report.append(("❌ Missing Column", "'seizure_kg' column not found"))
+        total_problems += 1
+    else:
+        numeric_seizure = pd.to_numeric(df['seizure_kg'], errors='coerce')
+        invalid_seizure = df[
+            numeric_seizure.isna() |
+            (numeric_seizure < 0)
+        ]
+        if not invalid_seizure.empty:
+            issue_rows = invalid_seizure.index.tolist()
+            excel_rows = to_excel_rows(issue_rows)
+            issues['invalid_seizure_kg'] = {
+                'indices': issue_rows,
+                'excel_rows': excel_rows,
+                'sample': invalid_seizure
+            }
+            report.append(("❌ Invalid Seizure Weights", 
+                         f"{len(invalid_seizure)} rows at spreadsheet rows: {excel_rows}"))
+            total_problems += len(invalid_seizure)
+                        
+        # Validation 5: If quantity = Kilogram, then it must be = to seizure_kg 
+        if {'weight_unit', 'quantity', 'seizure_kg'}.issubset(df.columns):
+            
+            # Convert weight_unit to string to ensure .str accessor works
+            df['weight_unit'] = df['weight_unit'].astype(str)
+            # Convert to numeric (coerce errors to NaN)
+            qty = pd.to_numeric(df['quantity'], errors='coerce')
+            seizure = pd.to_numeric(df['seizure_kg'], errors='coerce')
+            
+            # Find mismatches where weight is kilogram
+            mismatch = df[
+                (df['weight_unit'] == 'Kilogram') & 
+                (qty.notna()) & 
+                (qty != seizure)
+            ]
+            
+            if not mismatch.empty:
+                issue_rows = mismatch.index.tolist()
+                issues['kg_quantity_mismatch'] = {
+                    'indices': issue_rows,
+                    'excel_rows': to_excel_rows(issue_rows),
+                    'sample': mismatch
+                }
+                report.append((
+                    "❌ Kilogram Quantity Mismatch",
+                    f"{len(issue_rows)} rows: {to_excel_rows(issue_rows)}"
+                ))
+                total_problems += len(issue_rows)
+    
+
+    # REPORT OUTPUT
+    print("="*80)
+    print(f"DRUGS & QUANTITIES REPORT (Problematic Rows in Total: {total_problems})".center(80))
+    print("="*80)
+
+    print("\nSUMMARY:")
+    for check, message in report:
+        print(f"{check:<30} {message}")
+
+    print("\n"+ "="*80)
+    print("PROBLEMATIC ROWS".center(80))
+    print("="*80)
+
+    for issue_name, data in issues.items():
+        if len(data['indices']) > 0:
+            print(f"\n{issue_name.replace('_', ' ').upper()} ({len(data['indices'])} ROWS)")
+            print(f"Spreadsheet Rows: {data['excel_rows']}")
+            print("\nProblematic Data:")
+            print(data['sample'].to_string(index=False))
+            print("-"*40)
+
+    print("\n" + "="*80)
+    print("Spreadsheet rows account for header row (pandas index + 2)")
+    print("="*80)
+
+    return issues
+
+drugs_and_quantities_report(df)
+
