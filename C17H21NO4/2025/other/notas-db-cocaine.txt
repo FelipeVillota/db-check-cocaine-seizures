@@ -713,3 +713,103 @@ def drugs_and_quantities_report(df):
 
 drugs_and_quantities_report(df)
 
+
+
+def apply_conditional_formatting(sheet_service, spreadsheet_id, sheet_name, validation_results):
+    """" Apply LIGHT BLUE background formatting to specified rows."""
+    if not validation_results:
+        print("No validation issues found - nothing to highlight")
+        return
+    
+    # Collect all unique problematic rows from all validation issues
+    all_problem_rows = []
+    for issue in validation_results.values():
+        all_problem_rows.extend(issue['excel_rows'])
+    
+    # Remove duplicates and sort
+    all_problem_rows = sorted(list(set(all_problem_rows)))
+    
+    if not all_problem_rows:
+        print("No rows to highlight")
+        return
+    
+    try:
+        # First get the sheet ID from the sheet name
+        spreadsheet = sheet_service.spreadsheets().get(
+            spreadsheetId=spreadsheet_id,
+            fields="sheets(properties(sheetId,title))"
+        ).execute()
+        
+        sheet_id = None
+        for sheet in spreadsheet['sheets']:
+            if sheet['properties']['title'] == sheet_name:
+                sheet_id = sheet['properties']['sheetId']
+                break
+        
+        if not sheet_id:
+            print(f"Sheet '{sheet_name}' not found")
+            return
+        
+        # Build conditional formatting rules (batch all rows in one request for efficiency)
+        requests = {
+            "requests": [
+                {
+                    "addConditionalFormatRule": {
+                        "rule": {
+                            "ranges": [
+                                {
+                                    "sheetId": sheet_id,
+                                    "startRowIndex": row - 1,  # Convert to 0-based index
+                                    "endRowIndex": row,         # End is exclusive
+                                    "startColumnIndex": 0,
+                                    "endColumnIndex": 26        
+                                } for row in all_problem_rows
+                            ],
+                            "booleanRule": {
+                                "format": {
+                                    "backgroundColor": {
+                                        "red": 0.6,
+                                        "green": 0.8, 
+                                        "blue": 1.0
+                                    },
+                                    "textFormat": {
+                                        "bold": True
+                                    }
+                                },
+                                "condition": {
+                                    "type": "CUSTOM_FORMULA",
+                                    "values": [
+                                        {
+                                            "userEnteredValue": "=TRUE"
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        "index": 0
+                    }
+                }
+            ]
+        }
+        
+        # Execute the request
+        response = sheet_service.spreadsheets().batchUpdate(
+            spreadsheetId=spreadsheet_id,
+            body=requests
+        ).execute()
+        
+        print(f"Successfully highlighted {len(all_problem_rows)} problematic rows in LIGHT BLUE")
+        
+    except Exception as e:
+        print(f"Error applying conditional formatting: {str(e)}")
+
+
+validation_results = drugs_and_quantities_report(df)
+
+# Apply the formatting
+apply_conditional_formatting(
+    sheet_service=sheet_service,
+    spreadsheet_id=ORIGINAL_SPREADSHEET_ID,
+    sheet_name=RANGE_NAME,
+    validation_results=validation_results
+)
