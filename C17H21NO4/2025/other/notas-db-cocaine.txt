@@ -1548,3 +1548,229 @@ apply_conditional_formatting(
     rows_to_highlight=all_problem_rows
 >>>>>>> f21f490c1 (mint)
 )
+
+#---------------------
+
+# Loading data as df
+ 
+# Call the Sheets API to read data
+sheet = sheet_service.spreadsheets()
+result = sheet.values().get(spreadsheetId=ORIGINAL_SPREADSHEET_ID, range=RANGE_NAME).execute()
+values = result.get('values', [])
+
+# Convert to DataFrame for easier manipulation
+df = pd.DataFrame(values[1:], columns=values[0])
+print(df.head()) 
+
+#----------------------
+
+# import pandas as pd
+# import matplotlib.pyplot as plt
+# import numpy as np
+# from datetime import datetime
+# import seaborn as sns
+
+# # Assuming your dataframe is called 'df'
+# # First, let's prepare the data
+
+# def create_origin_country_plots(df):
+#     """
+#     Create stacked area plots for each origin country showing monthly drug seizures by type
+#     """
+    
+#     # Filter data to only include rows with origin country and seizure data
+#     filtered_df = df.dropna(subset=['Origin country', 'seizure_kgs', 'Year-Month'])
+    
+#     # Get unique origin countries
+#     origin_countries = filtered_df['Origin country'].unique()
+    
+#     # Get all unique drug types across all origin countries to create consistent color mapping
+#     all_drug_types = filtered_df['Type Drugs'].unique()
+#     print(f"Found {len(origin_countries)} origin countries: {origin_countries}")
+#     print(f"Found {len(all_drug_types)} drug types: {all_drug_types}")
+    
+#     # Set up the plotting style and create consistent color mapping
+#     plt.style.use('default')
+#     colors = plt.cm.tab20(np.linspace(0, 1, len(all_drug_types)))  # Use tab20 colormap for more distinct colors
+#     drug_color_map = dict(zip(all_drug_types, colors))
+    
+#     # Calculate number of subplots needed
+#     n_countries = len(origin_countries)
+#     n_cols = 2  # Two columns of plots
+#     n_rows = (n_countries + n_cols - 1) // n_cols  # Ceiling division
+    
+#     # Create figure with subplots
+#     fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, 5 * n_rows))
+    
+#     # If only one row, make axes a 2D array for consistency
+#     if n_rows == 1:
+#         axes = axes.reshape(1, -1)
+#     elif n_countries == 1:
+#         axes = np.array([[axes]])
+    
+#     # Flatten axes for easier iteration
+#     axes_flat = axes.flatten()
+    
+#     for i, country in enumerate(origin_countries):
+#         ax = axes_flat[i]
+        
+#         # Filter data for this origin country
+#         country_data = filtered_df[filtered_df['Origin country'] == country].copy()
+        
+#         # Group by Year-Month and Type Drugs, sum the seizures
+#         monthly_data = country_data.groupby(['Year-Month', 'Type Drugs'])['seizure_kgs'].sum().reset_index()
+        
+#         # Pivot to get drug types as columns
+#         pivot_data = monthly_data.pivot(index='Year-Month', columns='Type Drugs', values='seizure_kgs')
+#         pivot_data = pivot_data.fillna(0)  # Fill NaN with 0
+        
+#         # Ensure all drug types are present (with 0 values if missing)
+#         for drug_type in all_drug_types:
+#             if drug_type not in pivot_data.columns:
+#                 pivot_data[drug_type] = 0
+        
+#         # Reorder columns to match the order in all_drug_types for consistency
+#         pivot_data = pivot_data[all_drug_types]
+        
+#         # Sort by date
+#         pivot_data = pivot_data.sort_index()
+        
+#         if len(pivot_data) == 0:
+#             ax.text(0.5, 0.5, f'No data for\n{country}', 
+#                    horizontalalignment='center', verticalalignment='center',
+#                    transform=ax.transAxes, fontsize=12)
+#             ax.set_title(f'{country}')
+#             continue
+        
+#         # Convert Period index to datetime for plotting
+#         pivot_data.index = pivot_data.index.to_timestamp()
+        
+#         # Create stacked area plot with consistent colors
+#         colors_for_plot = [drug_color_map[drug] for drug in pivot_data.columns]
+#         ax.stackplot(pivot_data.index, 
+#                     *[pivot_data[col] for col in pivot_data.columns],
+#                     labels=pivot_data.columns,
+#                     colors=colors_for_plot,
+#                     alpha=0.7)
+        
+#         # Customize the plot
+#         ax.set_title(f'{country}\nTotal Seizures by Drug Type', fontsize=12, fontweight='bold')
+#         ax.set_xlabel('Date')
+#         ax.set_ylabel('Quantity Seized (kg)')
+        
+#         # Format x-axis dates
+#         ax.tick_params(axis='x', rotation=45)
+        
+#         # Add legend
+#         ax.legend(loc='upper left', bbox_to_anchor=(1, 1), fontsize=8)
+        
+#         # Add grid for better readability
+#         ax.grid(True, alpha=0.3)
+        
+#         # Format y-axis to show thousands separator
+#         ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{x:,.0f}'))
+    
+#     # Hide empty subplots
+#     for j in range(i + 1, len(axes_flat)):
+#         axes_flat[j].set_visible(False)
+    
+#     # Create a master legend outside the plots showing all drug types with consistent colors
+#     handles = []
+#     labels = []
+#     for drug_type in all_drug_types:
+#         handles.append(plt.Rectangle((0,0),1,1, facecolor=drug_color_map[drug_type], alpha=0.7))
+#         labels.append(drug_type)
+    
+#     # Add master legend to the figure
+#     fig.legend(handles, labels, loc='center left', bbox_to_anchor=(1, 0.5), 
+#                title='Drug Types', title_fontsize=12, fontsize=10)
+    
+#     # Adjust layout to accommodate legend
+#     plt.tight_layout()
+#     plt.subplots_adjust(right=0.85)  # Make room for the legend
+#     plt.show()
+    
+#     # Also create a summary table
+#     print("\nSummary by Origin Country:")
+#     print("=" * 50)
+    
+#     summary_stats = []
+#     for country in origin_countries:
+#         country_data = filtered_df[filtered_df['Origin country'] == country]
+#         total_seizures = country_data['seizure_kgs'].sum()
+#         n_incidents = len(country_data)
+#         drug_types = country_data['Type Drugs'].nunique()
+#         date_range = f"{country_data['date'].min().strftime('%Y-%m')} to {country_data['date'].max().strftime('%Y-%m')}"
+        
+#         summary_stats.append({
+#             'Origin Country': country,
+#             'Total Seizures (kg)': f"{total_seizures:,.1f}",
+#             'Number of Incidents': n_incidents,
+#             'Drug Types': drug_types,
+#             'Date Range': date_range
+#         })
+    
+#     summary_df = pd.DataFrame(summary_stats)
+#     print(summary_df.to_string(index=False))
+    
+
+
+# # Additional function to create individual plots if needed
+# def create_individual_country_plot(df, country_name):
+#     """
+#     Create a detailed plot for a specific origin country with consistent colors
+#     """
+#     filtered_df = df.dropna(subset=['Origin country', 'seizure_kgs', 'Year-Month'])
+    
+#     # Get all unique drug types for consistent coloring
+#     all_drug_types = filtered_df['Type Drugs'].unique()
+#     colors = plt.cm.tab20(np.linspace(0, 1, len(all_drug_types)))
+#     drug_color_map = dict(zip(all_drug_types, colors))
+    
+#     country_data = filtered_df[filtered_df['Origin country'] == country_name].copy()
+    
+#     if len(country_data) == 0:
+#         print(f"No data found for {country_name}")
+#         return None
+    
+#     # Group by Year-Month and Type Drugs
+#     monthly_data = country_data.groupby(['Year-Month', 'Type Drugs'])['seizure_kgs'].sum().reset_index()
+#     pivot_data = monthly_data.pivot(index='Year-Month', columns='Type Drugs', values='seizure_kgs')
+#     pivot_data = pivot_data.fillna(0)
+    
+#     # Ensure all drug types are present (with 0 values if missing)
+#     for drug_type in all_drug_types:
+#         if drug_type not in pivot_data.columns:
+#             pivot_data[drug_type] = 0
+    
+#     # Reorder columns to match the order in all_drug_types for consistency
+#     pivot_data = pivot_data[all_drug_types]
+#     pivot_data = pivot_data.sort_index()
+#     pivot_data.index = pivot_data.index.to_timestamp()
+    
+#     # Create larger individual plot
+#     plt.figure(figsize=(12, 8))
+#     colors_for_plot = [drug_color_map[drug] for drug in pivot_data.columns]
+#     plt.stackplot(pivot_data.index, 
+#                  *[pivot_data[col] for col in pivot_data.columns],
+#                  labels=pivot_data.columns,
+#                  colors=colors_for_plot,
+#                  alpha=0.7)
+    
+#     plt.title(f'Drug Seizures from {country_name}\nMonthly Quantities by Type', 
+#               fontsize=16, fontweight='bold')
+#     plt.xlabel('Date', fontsize=12)
+#     plt.ylabel('Quantity Seized (kg)', fontsize=12)
+#     plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+#     plt.grid(True, alpha=0.3)
+#     plt.xticks(rotation=45)
+#     plt.tight_layout()
+#     plt.show()
+    
+#     return pivot_data
+
+# # Usage:
+# create_origin_country_plots(df)
+# # 
+# # For individual country plots:
+# # create_individual_country_plot(df, 'Colombia')  # Replace with actual country name
