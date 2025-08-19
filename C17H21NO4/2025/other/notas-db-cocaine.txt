@@ -1774,3 +1774,130 @@ print(df.head())
 # # 
 # # For individual country plots:
 # # create_individual_country_plot(df, 'Colombia')  # Replace with actual country name
+
+
+##### Conversion system: new column to metric tons (EXPERIMENT)
+
+Multiply quantity 'qty' by respective factor to transform units
+
+| Unit       | To Grams (g) | To Kilograms (kg) | To Metric Tons (t)  |
+|------------|--------------|-------------------|---------------------|
+| 1 Pound    | 453.59237 g  | 0.45359237 kg     | 0.00045359237 t     |
+| 1 Kilogram | 1000 g       | 1 kg              | 0.001 t             |
+| 1 Gram     | 1 g          | 0.001 kg          | 0.000001 t          |
+| 1 Metric Ton | 1,000,000 g | 1000 kg           | 1 t                 |
+
+def insert_and_convert_to_metric_tons(sheet_service, spreadsheet_id, sheet_name,
+                                      seizure_kg_col_letter='L',
+                                      quantity_col_letter='J',
+                                      weight_unit_col_letter='K',
+                                      pounds_labels=('Pounds (lbs)'),
+                                      kilogram_label='Kilogram'):
+    """
+    New column after 'seizure_kg', called 'metric_tons', and populated based on the weight unit (lbs & kg → metric tons).
+    """
+    try:
+        # Get sheet ID
+        spreadsheet = sheet_service.spreadsheets().get(
+            spreadsheetId=spreadsheet_id,
+            fields="sheets.properties"
+        ).execute()
+
+        sheet_id = None
+        for sheet in spreadsheet['sheets']:
+            if sheet['properties']['title'] == sheet_name:
+                sheet_id = sheet['properties']['sheetId']
+                break
+        if sheet_id is None:
+            print(f"Sheet '{sheet_name}' not found")
+            return
+
+        # Calculate index to insert new column
+        insert_index = ord(seizure_kg_col_letter.upper()) - ord('A') + 1  # insert AFTER seizure_kg
+
+        # Insert column
+        insert_request = {
+            "requests": [{
+                "insertDimension": {
+                    "range": {
+                        "sheetId": sheet_id,
+                        "dimension": "COLUMNS",
+                        "startIndex": insert_index,
+                        "endIndex": insert_index + 1
+                    },
+                    "inheritFromBefore": True
+                }
+            }]
+        }
+
+        sheet_service.spreadsheets().batchUpdate(
+            spreadsheetId=spreadsheet_id,
+            body=insert_request
+        ).execute()
+
+        # Set new column letter (after insertion)
+        new_col_letter = chr(ord(seizure_kg_col_letter.upper()) + 1)
+
+        # Set header to "metric_tons"
+        header_range = f"{sheet_name}!{new_col_letter}1"
+        sheet_service.spreadsheets().values().update(
+            spreadsheetId=spreadsheet_id,
+            range=header_range,
+            valueInputOption="USER_ENTERED",
+            body={"values": [["metric_tons"]]}
+        ).execute()
+
+        # SFetch quantity and weight unit columns
+        quantity_range = f"{sheet_name}!{quantity_col_letter}2:{quantity_col_letter}"
+        unit_range = f"{sheet_name}!{weight_unit_col_letter}2:{weight_unit_col_letter}"
+        output_range = f"{sheet_name}!{new_col_letter}2:{new_col_letter}"
+
+        quantity_values = sheet_service.spreadsheets().values().get(
+            spreadsheetId=spreadsheet_id, range=quantity_range).execute().get('values', [])
+        unit_values = sheet_service.spreadsheets().values().get(
+            spreadsheetId=spreadsheet_id, range=unit_range).execute().get('values', [])
+
+        # Normalize lengths
+        max_len = max(len(quantity_values), len(unit_values))
+        quantity_values += [[]] * (max_len - len(quantity_values))
+        unit_values += [[]] * (max_len - len(unit_values))
+
+        # Convert values
+        converted_values = []
+        for qty_row, unit_row in zip(quantity_values, unit_values):
+            qty = qty_row[0] if qty_row else ''
+            unit = unit_row[0].strip() if unit_row else ''
+            try:
+                qty_num = float(str(qty).replace(',', '').strip())
+                if unit in pounds_labels:
+                    converted = round(qty_num * 0.00045359237, 4)
+                elif unit == kilogram_label:
+                    converted = round(qty_num / 1000, 4)
+                else:
+                    converted = ''
+            except Exception:
+                converted = ''
+            converted_values.append([converted])
+
+        # Write converted values
+        sheet_service.spreadsheets().values().update(
+            spreadsheetId=spreadsheet_id,
+            range=output_range,
+            valueInputOption="USER_ENTERED",
+            body={"values": converted_values}
+        ).execute()
+
+        print(f"Inserted new column '{new_col_letter}' with header 'metric_tons' and wrote conversions successfully.")
+
+    except Exception as e:
+        print(f"Error inserting and converting to metric tons: {str(e)}")
+
+
+insert_and_convert_to_metric_tons(
+    sheet_service=sheet_service,
+    spreadsheet_id=ORIGINAL_SPREADSHEET_ID,
+    sheet_name=RANGE_NAME,
+    seizure_kg_col_letter='L',
+    quantity_col_letter='J',
+    weight_unit_col_letter='K'
+)
