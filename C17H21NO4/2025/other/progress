@@ -1,0 +1,80 @@
+## Progress
+### batch 1
+ 
+✔ Last modified by and at (obvious in the sheet, just automated here for reports)
+
+✔ Standard column names
+
+✔ Dropdowns: Corrections & "Official" list of places added to due cols (country-level)
+
+✔ Event Metadata validation complete: rules and report 
+
+✔ Highlights: after validation report it colors problematic rows in red 
+
+
+### b.2
+
+✔ Workflow
+
+✔ Drugs & Quantities basic validation complete: rules and report
+
+✔ Highlights: after validation report it colors problematic rows in blue 
+
+✔ Reports now all include total number of problems per thematic area
+
+
+
+### b.3
+
+✔ Drugs & Quantities pt 2: last rule
+
+✔ Conversion system: actual weight units to metric tons (new column)
+
+✔ Number formats applied: decimals and commas to numeric quantities (US standard)
+
+✔ bugs solved: code is still sensitive to formatting in the original google sheet (col names, dropdowns, some data types)
+
+✔ Started provenance analysis
+
+-> Convergent issues: for now we can use dif colors, but when presenting...it is simpler with 1 color & reports 
+
+-> Logic: corrections by investigators not shown until next revision
+
+
+### b.4
+✔ Validation Report & Highlights: Modus Operandi/place of seizure, Sub MO 
+
+-> pero, a medida que avanzamos en la validación aparecen convergent issues (se superponen colores, los reportes están OK)
+
+    -> proposals:
+    
+    * aplicar formatos en el original y corregir lo más pronto 
+    
+    * oportunidad de mejora (using what we already have): 
+
+| transport_method | transport_vehicle    | transport_presentation  | transport_concealment      |
+|------------------|----------------------|-------------------------|---------------------------|
+| River            | Yola                 | Pressed bricks          | False compartments        |
+| Air              | Commercial flight    | Powder in plastic bags  | Hidden in luggage         |
+| Land             | Truck                | Cocaine paste barrels   | Mixed with legal goods    |
+| Body Carrier     | Pedestrian           | Capsules                | Ingested                  |
+
+
+### b.5 
+
+- Code refactoring, theme mapping
+
+- New highlights & reports
+
+
+### Next
+
+- Seizure Location (Region, Country, Department/State, Municipality/Port)
+
+### Pending 
+
+- Finish Drugs & Quantities: refine conversion, what to do with other the varieties in weight units?
+
+- db-test team verifications
+
+- Protected ranges
