@@ -2178,3 +2178,170 @@ sync_sheets(
     db_test_sheet_name="db-test",
     synced_sheet_name="synced"
 )
+
+----------------------
+
+from googleapiclient.errors import HttpError
+
+def merge_sheets(spreadsheet_id, aligned_sheet_name, db_test_sheet_name):
+    try:
+        # Get sheet metadata
+        spreadsheet = sheet_service.spreadsheets().get(
+            spreadsheetId=spreadsheet_id,
+            fields="sheets(properties(sheetId,title,gridProperties(rowCount,columnCount)))"
+        ).execute()
+        
+        # Verify both sheets exist and get their properties
+        sheet_properties = {}
+        for sheet in spreadsheet['sheets']:
+            title = sheet['properties']['title']
+            if title in [aligned_sheet_name, db_test_sheet_name]:
+                sheet_properties[title] = {
+                    'id': sheet['properties']['sheetId'],
+                    'rowCount': sheet['properties']['gridProperties']['rowCount'],
+                    'columnCount': sheet['properties']['gridProperties']['columnCount']
+                }
+        
+        if aligned_sheet_name not in sheet_properties:
+            print(f"❌ Sheet '{aligned_sheet_name}' not found")
+            return False
+        
+        if db_test_sheet_name not in sheet_properties:
+            print(f"❌ Sheet '{db_test_sheet_name}' not found")
+            return False
+        
+        # Get data from both sheets
+        aligned_result = sheet_service.spreadsheets().values().get(
+            spreadsheetId=spreadsheet_id,
+            range=f"{aligned_sheet_name}"
+        ).execute()
+        
+        db_test_result = sheet_service.spreadsheets().values().get(
+            spreadsheetId=spreadsheet_id,
+            range=f"{db_test_sheet_name}"
+        ).execute()
+        
+        aligned_values = aligned_result.get('values', [])
+        db_test_values = db_test_result.get('values', [])
+        
+        if not aligned_values:
+            print("❌ No data found in aligned sheet")
+            return False
+        
+        if not db_test_values:
+            print("❌ No data found in db-test sheet")
+            return False
+        
+        # Verify both sheets have the same headers
+        aligned_headers = aligned_values[0]
+        db_test_headers = db_test_values[0]
+        
+        if aligned_headers != db_test_headers:
+            print("❌ Headers don't match between sheets")
+            print(f"Aligned headers: {aligned_headers}")
+            print(f"DB Test headers: {db_test_headers}")
+            return False
+        
+        headers = aligned_headers
+        
+        # Find UID column index
+        try:
+            uid_index = headers.index('uid')
+        except ValueError:
+            print("❌ 'uid' column not found in headers")
+            return False
+        
+        # Create a set of all UIDs in db-test sheet for quick lookup
+        existing_uids = set()
+        for row in db_test_values[1:]:  # Skip header row
+            if len(row) > uid_index:
+                uid = str(row[uid_index])
+                if uid:
+                    existing_uids.add(uid)
+        
+        # Find new rows in aligned sheet that aren't in db-test
+        new_rows = []
+        for row in aligned_values[1:]:  # Skip header row
+            if len(row) > uid_index:
+                uid = str(row[uid_index])
+                if uid and uid not in existing_uids:
+                    # Pad the row with empty values if it's shorter than headers
+                    padded_row = row + [''] * (len(headers) - len(row))
+                    new_rows.append(padded_row)
+        
+        if not new_rows:
+            print("✅ No new rows to merge from aligned to db-test")
+            return True
+        
+        # Check if we need to expand the db-test sheet
+        current_db_test_rows = len(db_test_values)
+        needed_rows = current_db_test_rows + len(new_rows)
+        current_max_rows = sheet_properties[db_test_sheet_name]['rowCount']
+        db_test_sheet_id = sheet_properties[db_test_sheet_name]['id']
+        
+        if needed_rows > current_max_rows:
+            print(f"⚠️ Sheet needs expansion: {needed_rows} rows needed, current limit: {current_max_rows}")
+            
+            # Expand the sheet
+            resize_request = {
+                'requests': [{
+                    'updateSheetProperties': {
+                        'properties': {
+                            'sheetId': db_test_sheet_id,
+                            'gridProperties': {
+                                'rowCount': needed_rows + 100,  # Add buffer of 100 rows
+                                'columnCount': sheet_properties[db_test_sheet_name]['columnCount']
+                            }
+                        },
+                        'fields': 'gridProperties(rowCount,columnCount)'
+                    }
+                }]
+            }
+            
+            sheet_service.spreadsheets().batchUpdate(
+                spreadsheetId=spreadsheet_id,
+                body=resize_request
+            ).execute()
+            
+            print(f"✅ Expanded '{db_test_sheet_name}' from {current_max_rows} to {needed_rows + 100} rows")
+        
+        # Append new rows to db-test sheet
+        update_range = f"{db_test_sheet_name}!A{current_db_test_rows + 0}"
+        
+        update_request = {
+            'values': new_rows
+        }
+        
+        sheet_service.spreadsheets().values().update(
+            spreadsheetId=spreadsheet_id,
+            range=update_range,
+            valueInputOption='RAW',
+            body=update_request
+        ).execute()
+        
+        print(f"✅ Successfully merged {len(new_rows)} new rows from '{aligned_sheet_name}' to '{db_test_sheet_name}'")
+        print(f"📊 Total rows in db-test after merge: {current_db_test_rows + len(new_rows)}")
+        
+        return True
+        
+    except HttpError as e:
+        if "exceeds grid limits" in str(e):
+            print("❌ Error: Cannot add rows - sheet has reached its maximum capacity")
+            print("💡 Solution: The sheet expansion might have failed due to Google Sheets limitations")
+        else:
+            print(f"❌ HTTP Error: {e}")
+        return False
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+# Call the function
+merge_sheets(
+    spreadsheet_id=ORIGINAL_SPREADSHEET_ID,
+    aligned_sheet_name="aligned",
+    db_test_sheet_name="db-test"
+)
+
+-----
