@@ -2345,3 +2345,162 @@ merge_sheets(
 )
 
 -----
+
+
+def drugs_and_quantities_report(df_a_aligned):
+    
+    DRUG_COLS = category_mapping["Drugs & Quantities"]
+    report = []
+    issues = {}
+    total_problems = 0
+
+    # Helper function
+    def to_excel_rows(indices):
+        return [i+2 for i in indices]  # Convert pandas index to spreadsheet rows
+
+    def register_issue(name, problematic_df_a_aligned, description):
+        nonlocal total_problems
+        issue_rows = problematic_df_a_aligned.index.tolist()
+        issues[name] = {
+            'indices': issue_rows,
+            'excel_rows': to_excel_rows(issue_rows),
+            'sample': problematic_df_a_aligned,
+            'description': description
+        }
+        count = len(issue_rows)
+        total_problems += count
+        return count
+
+
+
+    # Validation 1: Drug type 
+    if 'drug_type' in df_a_aligned.columns:
+        invalid_drugs = df_a_aligned[df_a_aligned['drug_type'].isna() | df_a_aligned['drug_type'].str.lower().isin(['', 'unknown', 'n/a', 'na'])]
+        if not invalid_drugs.empty:
+            count = register_issue(
+                'invalid_drug_types',
+                invalid_drugs,
+                "Missing or invalid drug type values"
+            )
+            report.append(("Drug Type Issues", f"{count} invalid/missing drug types"))
+
+
+
+
+
+
+    # # Validation 1: Check for missing critical columns
+    # missing_cols = [col for col in DRUG_COLS if col not in df_a_aligned.columns]
+    # if missing_cols:
+    #     report.append(("❌ Missing Columns", f"{len(missing_cols)} key columns missing: {', '.join(missing_cols)}"))
+    #     total_problems += len(missing_cols)
+
+    # Validation 2: Drug type validations
+    if 'drug_type' in df_a_aligned.columns:
+        invalid_drugs = df_a_aligned[df_a_aligned['drug_type'].isna() | df_a_aligned['drug_type'].str.lower().isin(['', 'unknown', 'n/a', 'na'])]
+        if not invalid_drugs.empty:
+            count = register_issue(
+                'invalid_drug_types',
+                invalid_drugs,
+                "Missing or invalid drug type values"
+            )
+            report.append(("Drug Type Issues", f"{count} invalid/missing drug types"))
+
+    # Validation 3: Quantity validations
+    if 'quantity' in df_a_aligned.columns:
+        # Case 1: Non-numeric quantities
+        numeric_qty = pd.to_numeric(df_a_aligned['quantity'], errors='coerce')
+        non_numeric = df_a_aligned[numeric_qty.isna()]
+        
+        # Case 2: Zero/negative quantities
+        invalid_values = df_a_aligned[(numeric_qty.notna()) & (numeric_qty <= 0)]
+        
+        qty_issues = pd.concat([non_numeric, invalid_values]).drop_duplicates()
+        if not qty_issues.empty:
+            count = register_issue(
+                'invalid_quantities',
+                qty_issues,
+                "Non-numeric or zero/negative quantities"
+            )
+            report.append(("Quantity Issues", f"{count} invalid quantities"))
+
+    # Validation 4: Weight unit validations
+    if 'weight_unit' in df_a_aligned.columns:
+        valid_units = dropdown_options.get('weight_unit', [])
+        valid_units_lower = [str(u).lower() for u in valid_units]
+        
+        invalid_units = df_a_aligned[
+            ~df_a_aligned['weight_unit'].astype(str).str.lower().isin(valid_units_lower)
+            | df_a_aligned['weight_unit'].isna()
+        ]
+        
+        if not invalid_units.empty:
+            count = register_issue(
+                'invalid_weight_units',
+                invalid_units,
+                f"Invalid weight units (valid: {', '.join(valid_units)})"
+            )
+            report.append(("Weight Unit Issues", f"{count} invalid units"))
+
+    # Validation 5: Seizure weight consistency
+    if all(col in df_a_aligned.columns for col in ['seizure_kg', 'weight_unit', 'quantity']):
+        # Convert to numeric (handling errors)
+        seizure_numeric = pd.to_numeric(df_a_aligned['seizure_kg'], errors='coerce')
+        qty_numeric = pd.to_numeric(df_a_aligned['quantity'], errors='coerce')
+        
+        # Case 1: Invalid seizure values
+        invalid_seizure = df_a_aligned[seizure_numeric.isna() | (seizure_numeric < 0)]
+        
+        # Case 2: Kilogram unit mismatch
+        kg_mismatch = df_a_aligned[
+            (df_a_aligned['weight_unit'].str.lower() == 'kilogram') &
+            (qty_numeric.notna()) &
+            (seizure_numeric.notna()) &
+            (qty_numeric != seizure_numeric)
+        ]
+        
+        seizure_issues = pd.concat([invalid_seizure, kg_mismatch]).drop_duplicates()
+        if not seizure_issues.empty:
+            count = register_issue(
+                'seizure_weight_issues',
+                seizure_issues,
+                "Invalid seizure weights or kilogram mismatches"
+            )
+            report.append(("Seizure Weight Issues", f"{count} problems found"))
+
+    # Generate the report
+    print("="*80)
+    print(f"DRUGS & QUANTITIES VALIDATION REPORT".center(80))
+    print(f"Total Issues Found: {total_problems}".center(80))
+    print("="*80)
+    
+    # Summary Section
+    print("\nSUMMARY CHECKS:")
+    for check, message in report:
+        print(f"• {check:<20} {message}")
+    
+    # Detailed Findings
+    if issues:
+        print("\n" + "="*80)
+        print("DETAILED ISSUES".center(80))
+        print("="*80)
+        
+        for issue_name, data in issues.items():
+            print(f"\n❗ {data['description'].upper()}")
+            print(f"   Rows affected: {len(data['indices'])} (Spreadsheet rows: {data['excel_rows']})")
+            print("\nSample Data:")
+            print(data['sample'].head(3).to_string(index=False))
+            print("-"*60)
+    
+    print("\n" + "="*80)
+    print("Note: Spreadsheet rows account for header (pandas index + 2)".center(80))
+    print("="*80)
+    
+    return {
+        'report': report,
+        'issues': issues,
+        'total_problems': total_problems
+    }
+
+# Usage (identical to Event Metadata report)
+validation_results = drugs_and_quantities_report(df_a_aligned)
