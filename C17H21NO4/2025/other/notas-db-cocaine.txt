@@ -1901,3 +1901,280 @@ insert_and_convert_to_metric_tons(
     quantity_col_letter='J',
     weight_unit_col_letter='K'
 )
+
+
+#=================================================================0
+
+from googleapiclient.errors import HttpError
+import time
+
+def sync_sheets(spreadsheet_id, aligned_sheet_name, db_test_sheet_name, synced_sheet_name):
+    try:
+        # Get sheet metadata to find sheet IDs
+        spreadsheet = sheet_service.spreadsheets().get(
+            spreadsheetId=spreadsheet_id,
+            fields="sheets(properties(sheetId,title))"
+        ).execute()
+        
+        # Find sheet IDs
+        aligned_sheet_id = None
+        db_test_sheet_id = None
+        for sheet in spreadsheet['sheets']:
+            if sheet['properties']['title'] == aligned_sheet_name:
+                aligned_sheet_id = sheet['properties']['sheetId']
+            elif sheet['properties']['title'] == db_test_sheet_name:
+                db_test_sheet_id = sheet['properties']['sheetId']
+        
+        if aligned_sheet_id is None:
+            print(f"❌ Sheet '{aligned_sheet_name}' not found")
+            return False
+        
+        if db_test_sheet_id is None:
+            print(f"❌ Sheet '{db_test_sheet_name}' not found")
+            return False
+        
+        # Get data from both sheets
+        aligned_result = sheet_service.spreadsheets().values().get(
+            spreadsheetId=spreadsheet_id,
+            range=f"{aligned_sheet_name}"
+        ).execute()
+        
+        db_test_result = sheet_service.spreadsheets().values().get(
+            spreadsheetId=spreadsheet_id,
+            range=f"{db_test_sheet_name}"
+        ).execute()
+        
+        aligned_values = aligned_result.get('values', [])
+        db_test_values = db_test_result.get('values', [])
+        
+        if not aligned_values:
+            print("❌ No data found in aligned sheet")
+            return False
+        
+        if not db_test_values:
+            print("❌ No data found in db-test sheet")
+            return False
+        
+        # Verify both sheets have the same headers
+        aligned_headers = aligned_values[0]
+        db_test_headers = db_test_values[0]
+        
+        if aligned_headers != db_test_headers:
+            print("❌ Headers don't match between sheets")
+            print(f"Aligned headers: {aligned_headers}")
+            print(f"DB Test headers: {db_test_headers}")
+            return False
+        
+        headers = aligned_headers
+        
+        # Find UID column index
+        try:
+            uid_index = headers.index('uid')
+        except ValueError:
+            print("❌ 'uid' column not found in headers")
+            return False
+        
+        # Create a mapping of UID to row data for db-test sheet (for quick lookup)
+        db_test_dict = {}
+        for row_index, row in enumerate(db_test_values[1:], start=2):  # start=2 because we skip header
+            if len(row) > uid_index:
+                uid = str(row[uid_index])
+                if uid:
+                    # Store both the row data and its original position
+                    db_test_dict[uid] = {
+                        'data': row + [''] * (len(headers) - len(row)),  # Pad with empty values
+                        'original_position': row_index
+                    }
+        
+        # Process aligned sheet while preserving order
+        merged_rows = []
+        seen_uids = set()
+        
+        # First, add all rows from aligned sheet in their original order
+        for row in aligned_values[1:]:
+            if len(row) > uid_index:
+                uid = str(row[uid_index])
+                if uid:
+                    # If this UID exists in db-test, use that data instead
+                    if uid in db_test_dict:
+                        merged_rows.append(db_test_dict[uid]['data'])
+                        seen_uids.add(uid)
+                    else:
+                        # Pad with empty values if needed
+                        padded_row = row + [''] * (len(headers) - len(row))
+                        merged_rows.append(padded_row)
+                        seen_uids.add(uid)
+        
+        # Then, add any rows from db-test that weren't in aligned sheet
+        # We need to preserve the original order from db-test
+        remaining_db_test_rows = []
+        
+        for row in db_test_values[1:]:
+            if len(row) > uid_index:
+                uid = str(row[uid_index])
+                if uid and uid not in seen_uids:
+                    # Pad with empty values if needed
+                    padded_row = row + [''] * (len(headers) - len(row))
+                    remaining_db_test_rows.append((db_test_dict[uid]['original_position'], padded_row))
+        
+        # Sort by original position and add to merged rows
+        remaining_db_test_rows.sort(key=lambda x: x[0])
+        for _, row in remaining_db_test_rows:
+            merged_rows.append(row)
+        
+        # Prepare values for writing (headers + merged rows)
+        values = [headers] + merged_rows
+        
+        # Check if synced sheet exists
+        try:
+            # Try to get the sheet to see if it exists
+            sheet_service.spreadsheets().values().get(
+                spreadsheetId=spreadsheet_id,
+                range=f"{synced_sheet_name}!A1"
+            ).execute()
+            
+            # Clear existing sheet if it exists
+            clear_request = {
+                "ranges": [f"{synced_sheet_name}"]
+            }
+            sheet_service.spreadsheets().values().batchClear(
+                spreadsheetId=spreadsheet_id,
+                body=clear_request
+            ).execute()
+            
+        except HttpError:
+            # Sheet doesn't exist, create it
+            batch_update_request = {
+                'requests': [{
+                    'addSheet': {
+                        'properties': {
+                            'title': synced_sheet_name
+                        }
+                    }
+                }]
+            }
+            sheet_service.spreadsheets().batchUpdate(
+                spreadsheetId=spreadsheet_id,
+                body=batch_update_request
+            ).execute()
+            print(f"✅ Created new sheet: {synced_sheet_name}")
+        
+        # Write data to synced sheet
+        update_request = {
+            'values': values
+        }
+        sheet_service.spreadsheets().values().update(
+            spreadsheetId=spreadsheet_id,
+            range=f"{synced_sheet_name}",
+            valueInputOption='RAW',
+            body=update_request
+        ).execute()
+        
+        # Get the synced sheet ID
+        synced_sheet_id = get_sheet_id(spreadsheet_id, synced_sheet_name)
+        
+        # Copy formatting from aligned sheet
+        copy_format_requests = [
+            {
+                'copyPaste': {
+                    'source': {
+                        'sheetId': aligned_sheet_id,
+                        'startRowIndex': 0,
+                        'endRowIndex': 1,  # Header row
+                        'startColumnIndex': 0,
+                        'endColumnIndex': len(headers)
+                    },
+                    'destination': {
+                        'sheetId': synced_sheet_id,
+                        'startRowIndex': 0,
+                        'endRowIndex': 1,
+                        'startColumnIndex': 0,
+                        'endColumnIndex': len(headers)
+                    },
+                    'pasteType': 'PASTE_FORMAT'
+                }
+            },
+            {
+                'copyPaste': {
+                    'source': {
+                        'sheetId': aligned_sheet_id,
+                        'startRowIndex': 1,  # Data rows
+                        'endRowIndex': len(aligned_values),
+                        'startColumnIndex': 0,
+                        'endColumnIndex': len(headers)
+                    },
+                    'destination': {
+                        'sheetId': synced_sheet_id,
+                        'startRowIndex': 1,
+                        'endRowIndex': len(values),
+                        'startColumnIndex': 0,
+                        'endColumnIndex': len(headers)
+                    },
+                    'pasteType': 'PASTE_FORMAT'
+                }
+            }
+        ]
+        
+        # Apply formatting
+        batch_update_request = {
+            'requests': copy_format_requests
+        }
+        
+        sheet_service.spreadsheets().batchUpdate(
+            spreadsheetId=spreadsheet_id,
+            body=batch_update_request
+        ).execute()
+        
+        # Auto-resize columns to fit content
+        auto_resize_request = {
+            'requests': [{
+                'autoResizeDimensions': {
+                    'dimensions': {
+                        'sheetId': synced_sheet_id,
+                        'dimension': 'COLUMNS',
+                        'startIndex': 0,
+                        'endIndex': len(headers)
+                    }
+                }
+            }]
+        }
+        
+        sheet_service.spreadsheets().batchUpdate(
+            spreadsheetId=spreadsheet_id,
+            body=auto_resize_request
+        ).execute()
+        
+        print(f"✅ Successfully created/updated synced sheet '{synced_sheet_name}' with formatting")
+        print(f"📊 Total records: {len(merged_rows)}")
+        print(f"📁 Records from aligned: {len(aligned_values) - 1}")
+        print(f"📁 Records from db-test: {len(db_test_values) - 1}")
+        print(f"📁 Unique records in synced sheet: {len(merged_rows)}")
+        
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+def get_sheet_id(spreadsheet_id, sheet_name):
+    """Helper function to get sheet ID by name"""
+    spreadsheet = sheet_service.spreadsheets().get(
+        spreadsheetId=spreadsheet_id,
+        fields="sheets(properties(sheetId,title))"
+    ).execute()
+    
+    for sheet in spreadsheet['sheets']:
+        if sheet['properties']['title'] == sheet_name:
+            return sheet['properties']['sheetId']
+    
+    raise ValueError(f"Sheet '{sheet_name}' not found")
+
+
+sync_sheets(
+    spreadsheet_id=ORIGINAL_SPREADSHEET_ID,
+    aligned_sheet_name="aligned",
+    db_test_sheet_name="db-test",
+    synced_sheet_name="synced"
+)
