@@ -2504,3 +2504,119 @@ def drugs_and_quantities_report(df_a_aligned):
 
 # Usage (identical to Event Metadata report)
 validation_results = drugs_and_quantities_report(df_a_aligned)
+
+
+
+
+
+
+
+
+#####################
+
+def detect_suspicious_duplicates(df_b):
+    """
+    Detects suspicious duplicate rows that might represent the same seizure event,
+    based on having identical values for 'quantity', 'weight_unit', 'country',
+    and 'modus_operandi'.
+    """
+
+    DUPLICATE_KEY_COLS = ["quantity", "weight_unit", "country", "modus_operandi"]
+    report = []
+    issues = {}
+    total_problems = 0
+
+    # Helper functions
+    def to_excel_rows(indices):
+        return [i + 2 for i in indices]  # +2 to match spreadsheet rows (header +1)
+
+    def register_issue(name, problematic_df_b, description):
+        nonlocal total_problems
+        issue_rows = problematic_df_b.index.tolist()
+        issues[name] = {
+            'indices': issue_rows,
+            'excel_rows': to_excel_rows(issue_rows),
+            'sample': problematic_df_b,
+            'description': description
+        }
+        count = len(issue_rows)
+        total_problems += count
+        return count
+
+    # Validation 1: Missing columns
+    missing_cols = [col for col in DUPLICATE_KEY_COLS if col not in df_b.columns]
+    if missing_cols:
+        report.append((
+            "❌ Missing Columns",
+            f"Required columns missing: {', '.join(missing_cols)}"
+        ))
+        total_problems += len(missing_cols)
+        return {'report': report, 'issues': issues, 'total_problems': total_problems}
+
+    # Validation 2: Detect duplicate groups
+    dup_groups = (
+        df_b[df_b.duplicated(subset=DUPLICATE_KEY_COLS, keep=False)]
+        .sort_values(by=DUPLICATE_KEY_COLS)
+    )
+
+    if dup_groups.empty:
+        report.append(("✅ No Duplicates", "No suspicious duplicate events found."))
+    else:
+        count = register_issue(
+            "potential_duplicates",
+            dup_groups,
+            "Potential duplicate seizure events with identical key fields."
+        )
+        report.append((
+            "⚠️ Possible Duplicate Events",
+            f"{count} records appear duplicated across key variables: "
+            f"{', '.join(DUPLICATE_KEY_COLS)}"
+        ))
+
+    # Report summary
+    print("=" * 80)
+    print("SUSPICIOUS DUPLICATE DETECTION REPORT".center(80))
+    print(f"Total Potential Duplicates: {total_problems}".center(80))
+    print("=" * 80)
+
+    for check, message in report:
+        print(f"• {check:<25} {message}")
+
+    if issues:
+        print("\n" + "=" * 80)
+        print("DETAILED DUPLICATE GROUPS".center(80))
+        print("=" * 80)
+
+        grouped = dup_groups.groupby(DUPLICATE_KEY_COLS)
+        for key, group in grouped:
+            print(f"\n🔁 Duplicate Group: {key}")
+            print(f"   Rows affected: {group.shape[0]} (Spreadsheet rows: {to_excel_rows(group.index.tolist())})")
+            print(group.to_string(index=False))
+            print("-" * 60)
+
+    print("\n" + "=" * 80)
+    print("Note: Spreadsheet rows = pandas index + 2".center(80))
+    print("=" * 80)
+
+    return {
+        'report': report,
+        'issues': issues,
+        'total_problems': total_problems
+    }
+
+# Run the duplicate detection
+duplicate_results = detect_suspicious_duplicates(df_b)
+
+
+
+
+
+# Extract the duplicate table from the function output
+dup_df = duplicate_results['issues'].get('potential_duplicates', {}).get('sample', None)
+
+# Display the duplicates if any exist
+if dup_df is not None and not dup_df.empty:
+    print("Potential duplicate records:")
+    display(dup_df)  # works well in Jupyter / RStudio notebooks
+else:
+    print("No potential duplicates found.")  
