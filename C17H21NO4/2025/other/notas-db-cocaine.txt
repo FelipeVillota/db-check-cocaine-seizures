@@ -1,0 +1,2622 @@
+<<<<<<< HEAD
+#====== RUN ONLY FOR TESTS =========
+ 
+# Create a copy of the latest version of the original spreadsheet in Google Drive. 
+
+# Create dated title for demo/test copy
+today_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+copy_title = f'Validation Test Copy - {today_str}'
+
+# Create a copy with today's date
+copy_body = {'name': copy_title, 'parents': ['root']}
+copied_file = drive_service.files().copy(
+    fileId=ORIGINAL_SPREADSHEET_ID,
+    body=copy_body
+).execute()
+
+# Use the ID of the new copy for analysis
+SPREADSHEET_ID = copied_file['id']
+
+print(f"✅ Spreadsheet copied on {today_str}. New ID: {SPREADSHEET_ID}")
+
+# URL
+print(f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}")
+
+
+# List of email addresses to share with
+email_list = [
+    'lvillota@insightcrime.org',
+    'villotamacias@gmail.com'#,
+    #'jmanjarres@insightcrime.org',
+    #'cnewton@insightcrime.org',
+    #'mcavalari@insightcrime.org'
+]
+
+# Share with each email in the list
+for email in email_list:
+    drive_service.permissions().create(
+        fileId=SPREADSHEET_ID,
+        body={
+            'type': 'user',
+            'role': 'writer',
+            'emailAddress': email
+        },
+        fields='id'
+    ).execute()
+    print(f"Shared with {email}")
+
+# URL
+print(f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}")
+
+
+
+
+
+
+--------------
+
+
+# Update a column name directly in Google Sheets
+def update_column_name(old_name, new_name):
+    # Get headers
+    headers = sheet.values().get(spreadsheetId=SPREADSHEET_ID, range='2025!1:1').execute()['values'][0]
+    
+    # Find and update column
+    if old_name in headers:
+        col_index = headers.index(old_name)
+        col_letter = chr(65 + col_index)  # Convert to A, B, C...
+        
+        # Update in sheet
+        sheet.values().update(
+            spreadsheetId=SPREADSHEET_ID,
+            range=f'2025!{col_letter}1',
+            valueInputOption='RAW',
+            body={'values': [[new_name]]}
+        ).execute()
+        
+        print(f"✅ '{old_name}' → '{new_name}'")
+    else:
+        print(f"❌ '{old_name}' not found")
+
+# Function usage
+update_column_name('Type', 'TIPO')
+
+# Refresh DataFrame
+result = sheet.values().get(spreadsheetId=SPREADSHEET_ID, range=RANGE_NAME).execute()
+values = result.get('values', [])
+df = pd.DataFrame(values[1:], columns=values[0])
+
+
+
+# Format dates directly in Google Sheets
+def format_dates(date_column_name='Date'):
+    # Get all data
+    result = sheet.values().get(spreadsheetId=SPREADSHEET_ID, range=RANGE_NAME).execute()
+    values = result.get('values', [])
+    
+    if not values:
+        print("❌ No data found")
+        return
+    
+    headers = values[0]
+    if date_column_name not in headers:
+        print(f"❌ '{date_column_name}' column not found")
+        return
+    
+    col_index = headers.index(date_column_name)
+    col_letter = chr(65 + col_index)
+    
+    # Process dates
+    updated_values = []
+    for i, row in enumerate(values[1:], 2):  # Start from row 2
+        if col_index < len(row) and row[col_index]:
+            try:
+                # Parse date (assuming YYYY-MM-DD format)
+                date_obj = datetime.strptime(row[col_index], "%Y-%m-%d")
+                # Format to DD-MM-YYYY
+                formatted_date = date_obj.strftime("%d-%m-%Y")
+                updated_values.append([formatted_date])
+            except ValueError:
+                # Keep original if can't parse
+                updated_values.append([row[col_index]])
+        else:
+            updated_values.append([''])
+    
+    # Update the entire date column
+    if updated_values:
+        sheet.values().update(
+            spreadsheetId=SPREADSHEET_ID,
+            range=f'2025!{col_letter}2:{col_letter}{len(updated_values)+1}',
+            valueInputOption='RAW',
+            body={'values': updated_values}
+        ).execute()
+        
+        print(f"✅ Dates formatted to DD-MM-YYYY in column {col_letter}")
+
+# Function usage
+format_dates('Date')  # or whatever your date column is called
+
+
+# Date must not be empty
+def validate_dates(df, date_column='Date'):
+    if date_column not in df.columns:
+        print(f"❌ Column '{date_column}' not found")
+        return
+    
+    # Check for empty dates
+    empty_dates = df[df[date_column].isna()]
+    
+    if not empty_dates.empty:
+        print(f"❌ Found {len(empty_dates)} rows with empty '{date_column}' dates:")
+        print(empty_dates)
+    else:
+        print(f"✅ All '{date_column}' dates are filled")
+
+
+validate_dates(df)
+
+
+# Why is there Duration if there is no Date 2?  
+def validate_duration(df, date_column='Date', date2_column='Date 2', duration_column='Duration'):
+    if date_column not in df.columns or date2_column not in df.columns or duration_column not in df.columns:
+        print(f"❌ One or more columns '{date_column}', '{date2_column}', or '{duration_column}' not found")
+        return
+    
+    # Check for rows where Date 2 is empty but Duration is filled
+    invalid_rows = df[(df[date2_column].isna()) & (df[duration_column].notna())]
+    
+    if not invalid_rows.empty:
+        print(f"❌ Found {len(invalid_rows)} rows with '{duration_column}' filled but '{date2_column}' empty:")
+        print(invalid_rows)
+    else:
+        print(f"✅ All '{duration_column}' values are valid with respect to '{date2_column}'")
+
+validate_duration(df)
+
+
+# Check if Date 2 is filed, then Time unit is not Individual
+def validate_time_unit(df, date2_column='Date 2', time_unit_column='Time unit'):
+    if date2_column not in df.columns or time_unit_column not in df.columns:
+        print(f"❌ One or more columns '{date2_column}' or '{time_unit_column}' not found")
+        return
+    
+    # Check for rows where Date 2 is filled but Time unit is 'Individual'
+    invalid_rows = df[(df[date2_column].notna()) & (df[time_unit_column] == 'Individual')]
+    
+    if not invalid_rows.empty:
+        print(f"❌ Found {len(invalid_rows)} rows with '{time_unit_column}' as 'Individual' but '{date2_column}' filled:")
+        print(invalid_rows)
+    else:
+        print(f"✅ All '{time_unit_column}' values are valid with respect to '{date2_column}'") 
+
+validate_time_unit(df)
+
+
+----------------------
+
+
+# 1. Identify mismatches between 'Weight unit' and 'Quantity' vs 'seizure_kgs'
+df['kg_unit_mismatch'] = (
+    (df['Weight unit'].str.lower() == 'Kilogram') &
+    (df['Quantity'] != df['seizure_kgs'])
+)
+
+# 2. Count of mismatches by weight unit
+unit_mismatch_counts = df[df['kg_unit_mismatch']].groupby('Weight unit').size().reset_index(name='count')
+
+# 3. Plot mismatches
+plt.figure(figsize=(8, 5))
+sns.barplot(data=unit_mismatch_counts, x='Weight unit', y='count', palette='Reds')
+plt.title("Mismatches Between Quantity and Seizure_kgs by Weight Unit")
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
+
+-------
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+plt.figure(figsize=(10, 6))
+
+# Boxplot with grey boxes
+sns.boxplot(data=df, x='Type Drugs', y='seizure_kgs', color='grey')
+
+# Log scale on y-axis
+plt.yscale('log')
+
+# Red horizontal line at y=1 (which is 10^0)
+plt.axhline(y=1, color='red', linestyle='--', linewidth=1.5)
+
+plt.title("Log-Scale Seizure_kgs Distribution by Drug Type")
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
+
+-------
+
+
+# Convert and clean seizure data
+df['seizure_kgs'] = pd.to_numeric(df['seizure_kgs'], errors='coerce')
+
+# Create pivot tables with matching structure
+pivot_data = df.groupby(['Year', 'Month']).agg(
+    seizure_kg=('seizure_kgs', 'sum'),
+    event_count=('seizure_kgs', 'count')
+).unstack(level=0)
+
+# Extract components
+seizure_kg = pivot_data['seizure_kg']
+event_counts = pivot_data['event_count']
+
+# Fill NaN values with 0 if appropriate, or use mask
+seizure_kg_filled = seizure_kg.fillna(0)
+
+# Plot combined heatmap
+plt.figure(figsize=(12,6))
+ax = sns.heatmap(
+    seizure_kg_filled.sort_index(ascending=False),
+    cmap="Greys",
+    annot=event_counts.sort_index(ascending=False),
+    fmt='g',
+    cbar_kws={'label': 'Total Seizure (kg)'},
+    linewidths=0.5,  # Adds grid lines between cells
+    linecolor='lightgray'  # Color for grid lines
+)
+
+# Title and labels
+plt.title("Monthly Seizures by Year\n(Event Counts shown as numbers, Quantity shown by shading)")
+plt.ylabel("Month")
+plt.xlabel("Year")
+
+# Rotate year labels if needed
+ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha='right')
+
+plt.tight_layout()
+plt.show()
+-----
+
+
+
+# Convert NA values to empty strings
+df = df.fillna('')
+
+# Prepare data to write back to Google Sheet
+headers = list(df.columns)
+data = df.values.tolist()
+updated_values = [headers] + data
+
+# Clear the existing data first
+sheet.values().clear(
+    spreadsheetId=TEST_SPREADSHEET_ID,
+    range=RANGE_NAME
+).execute()
+
+# Update with new data
+update_request = {
+    'values': updated_values
+}
+
+sheet.values().update(
+    spreadsheetId=TEST_SPREADSHEET_ID,
+    range=RANGE_NAME,
+    valueInputOption='RAW',
+    body=update_request
+).execute()
+
+print("Column names updated successfully in Google Sheets!")
+
+------------------
+
+def extract_data_validations(sheet_service, spreadsheet_id, sheet_name, max_rows=200):
+    # Get sheetId
+    spreadsheet = sheet_service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
+    sheet_id = next(
+        (s['properties']['sheetId'] for s in spreadsheet['sheets'] if s['properties']['title'] == sheet_name), 
+        None
+    )
+    if sheet_id is None:
+        print(f"❌ Sheet name '{sheet_name}' not found.")
+        return []
+
+    # Fetch limited grid data only for a small range (e.g., first 200 rows)
+    sheet_data = sheet_service.spreadsheets().get(
+        spreadsheetId=spreadsheet_id,
+        ranges=[f"{sheet_name}!A1:Z{max_rows}"],  # Limit to first 26 columns and max_rows
+        fields="sheets.data.rowData.values.dataValidation"
+    ).execute()
+
+    validations = []
+    row_data = sheet_data['sheets'][0].get('data', [])[0].get('rowData', [])
+    
+    for row_idx, row in enumerate(row_data):
+        for col_idx, cell in enumerate(row.get('values', [])):
+            dv = cell.get('dataValidation')
+            if dv:
+                condition = dv.get('condition', {})
+                values = [v.get('userEnteredValue') for v in condition.get('values', [])]
+                validations.append({
+                    "row": row_idx + 1,
+                    "column": col_idx + 1,
+                    "type": condition.get('type'),
+                    "values": values
+                })
+
+    print(f"✅ Found {len(validations)} data validations in first {max_rows} rows.")
+    return validations
+
+validations = extract_data_validations(
+    sheet_service=sheet_service,
+    spreadsheet_id=TEST_SPREADSHEET_ID,
+    sheet_name="2025",
+    max_rows=300  # Tune as needed
+)
+
+for v in validations:
+    print(v)
+
+WYSIWYG, simpler and better with each iteration
+
+
+
+--------------
+
+
+def event_metadata_report(df):
+    report = []
+    issues = {}
+    total_problems = 0  # Initialize counter for total problems
+    
+    # Convert pandas indices to spreadsheet rows (+2 for header + zero-index)
+    def to_excel_rows(indices):
+        return [i+2 for i in indices]  # For spreadsheet row reference
+
+    # Validation 1: Empty Dates
+    if 'date_1' not in df.columns:
+        report.append(("❌ Missing Column", "'date' column not found"))
+        total_problems += 1  # Count missing column as a problem
+    else:
+        empty_dates = df[df['date_1'].isna()]
+        if not empty_dates.empty:
+            issue_rows = empty_dates.index.tolist()
+            excel_rows = to_excel_rows(issue_rows)
+            issues['empty_dates'] = {
+                'indices': issue_rows,
+                'excel_rows': excel_rows,
+                'sample': empty_dates
+            }
+            report.append(("❌ Empty Dates", 
+                         f"{len(empty_dates)} rows at spreadsheet rows: {excel_rows}"))
+            total_problems += len(empty_dates)
+
+    # Validation 2: Duration without Date 2
+    missing_cols = [col for col in ['date_1', 'date_2', 'duration'] if col not in df.columns]
+    if missing_cols:
+        report.append(("❌ Missing Columns", f"Columns not found: {', '.join(missing_cols)}"))
+        total_problems += len(missing_cols)  # Count each missing column
+    else:
+        invalid_duration = df[(df['date_2'].isna()) & (df['duration'].notna())]
+        if not invalid_duration.empty:
+            issue_rows = invalid_duration.index.tolist()
+            excel_rows = to_excel_rows(issue_rows)
+            issues['invalid_duration'] = {
+                'indices': issue_rows,
+                'excel_rows': excel_rows,
+                'sample': invalid_duration
+            }
+            report.append(("❌ Duration Conflict", 
+                         f"{len(invalid_duration)} rows at spreadsheet rows: {excel_rows}"))
+            total_problems += len(invalid_duration)
+
+    # Validation 3: Time unit inconsistency
+    if 'time_unit' not in df.columns:
+        report.append(("❌ Missing Column", "'time_unit' column not found"))
+        total_problems += 1  # Count missing column
+    else:
+        invalid_time = df[(df['date_2'].notna()) & (df['time_unit'] == 'Individual')]
+        if not invalid_time.empty:
+            issue_rows = invalid_time.index.tolist()
+            excel_rows = to_excel_rows(issue_rows)
+            issues['invalid_time'] = {
+                'indices': issue_rows,
+                'excel_rows': excel_rows,
+                'sample': invalid_time
+            }
+            report.append(("❌ Time Unit Conflict", 
+                         f"{len(invalid_time)} rows at spreadsheet rows: {excel_rows}"))
+            total_problems += len(invalid_time) 
+
+    # Print formatted report
+    print("="*80)
+    print(f"EVENT METADATA REPORT (Problematic Rows in Total: {total_problems})".center(80))
+    print("="*80)
+    
+    # Summary section
+    print("\nSUMMARY:")
+    for check, message in report:
+        print(f"{check:<30} {message}")
+    
+    # Problematic rows
+    print("\n"+ "="*80)
+    print("PROBLEMATIC ROWS".center(80))
+    print("="*80)
+    
+    for issue_name, data in issues.items():
+        if len(data['indices']) > 0:
+            print(f"\n🔴 {issue_name.replace('_', ' ').upper()} ({len(data['indices'])} ROWS)")
+            print(f"Spreadsheet Rows: {data['excel_rows']}")
+            print("\nProblematic Data:")
+            print(data['sample'].to_string(index=False))
+            print("-"*40)
+    
+    print("\n" + "="*80)
+    print("ℹ️ Spreadsheet rows account for header row (pandas index + 2)")
+    print("="*80)
+    
+    return issues
+
+# Usage
+validation_results = event_metadata_report(df)
+
+
+def apply_conditional_formatting(sheet_service, spreadsheet_id, sheet_name, rows_to_highlight):
+    """Apply RED background formatting to specified rows."""
+    if not rows_to_highlight:
+        print("No rows to highlight")
+        return
+    
+    # Build conditional formatting rules (batch all rows in one request for efficiency)
+    requests = {
+        "requests": [
+            {
+                "addConditionalFormatRule": {
+                    "rule": {
+                        "ranges": [
+                            {
+                                "sheetId": sheet_name,  # This should be the sheet ID, not name
+                                "startRowIndex": row - 1,  # Convert to 0-based index
+                                "endRowIndex": row,       # End is exclusive
+                                "startColumnIndex": 0,
+                                "endColumnIndex": 0      # Applies to all existing and future columns
+                            } for row in rows_to_highlight
+                        ],
+                        "booleanRule": {
+                            "format": {
+                                "backgroundColor": {
+                                    "red": 1.0,
+                                    "green": 0.6,
+                                    "blue": 0.6
+                                }
+                            },
+                            "condition": {
+                                "type": "CUSTOM_FORMULA",
+                                "values": [
+                                    {
+                                        "userEnteredValue": "=TRUE"
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    "index": 0
+                }
+            }
+        ]
+    }
+    
+    try:
+        # First we need to get the sheet ID from the sheet name
+        spreadsheet = sheet_service.spreadsheets().get(
+            spreadsheetId=spreadsheet_id,
+            fields="sheets(properties(sheetId,title))"
+        ).execute()
+        
+        sheet_id = None
+        for sheet in spreadsheet['sheets']:
+            if sheet['properties']['title'] == sheet_name:
+                sheet_id = sheet['properties']['sheetId']
+                break
+        
+        if not sheet_id:
+            print(f"Sheet '{sheet_name}' not found")
+            return
+        
+        # Update the requests with the correct sheet IDs
+        for request in requests['requests']:
+            for range_ in request['addConditionalFormatRule']['rule']['ranges']:
+                range_['sheetId'] = sheet_id
+        
+        # Execute the request
+        response = sheet_service.spreadsheets().batchUpdate(
+            spreadsheetId=spreadsheet_id,
+            body=requests
+        ).execute()
+        
+        print(f"Successfully highlighted {len(rows_to_highlight)} rows in red")
+        
+    except Exception as e:
+        print(f"Error applying conditional formatting: {str(e)}")
+
+# Get all problematic rows from validation results
+all_problem_rows = []
+for issue in validation_results.values():
+    all_problem_rows.extend(issue['excel_rows'])
+
+# Remove duplicates and sort
+all_problem_rows = sorted(list(set(all_problem_rows)))
+
+# Apply the formatting
+apply_conditional_formatting(
+    sheet_service=sheet_service,
+    spreadsheet_id=ORIGINAL_SPREADSHEET_ID,
+    sheet_name=RANGE_NAME, 
+    rows_to_highlight=all_problem_rows
+)
+
+-------------------
+
+def drugs_and_quantities_report(df):
+    report = []
+    issues = {}
+    total_problems = 0
+
+    def to_excel_rows(indices):
+        return [i + 2 for i in indices]  # For spreadsheet row reference
+
+    # Validation 1: Missing or Unknown Types of Drugs
+    if 'drug_type' not in df.columns:
+        report.append(("❌ Missing Column", "'drug_type' column not found"))
+        total_problems += 1  # Count missing column as a problem
+    else:
+        invalid_drugs = df[df['drug_type'].isna() | df['drug_type'].str.lower().isin(['', 'unknown', 'n/a', 'na'])]
+        if not invalid_drugs.empty:
+            issue_rows = invalid_drugs.index.tolist()
+            excel_rows = to_excel_rows(issue_rows)
+            issues['invalid_drug_type'] = {
+                'indices': issue_rows,
+                'excel_rows': excel_rows,
+                'sample': invalid_drugs
+            }
+            report.append(("❌ Invalid Drug Types", 
+                         f"{len(invalid_drugs)} rows at spreadsheet rows: {excel_rows}"))
+            total_problems += len(invalid_drugs)
+
+    # Validation 2: Missing, Not numeric quantities or ≤ 0 
+    if 'quantity' not in df.columns:
+        report.append(("❌ Missing Column", "'quantity' column not found"))
+        total_problems += 1
+    else:
+        numeric_qty = pd.to_numeric(df['quantity'], errors='coerce')
+        non_numeric_qty = df[numeric_qty.isna()]
+        zero_or_negative_qty = df[(numeric_qty.notna()) & (numeric_qty <= 0)]
+        qty_issues = pd.concat([non_numeric_qty, zero_or_negative_qty]).drop_duplicates()
+        if not qty_issues.empty:
+            issue_rows = qty_issues.index.tolist()
+            excel_rows = to_excel_rows(issue_rows)
+            issues['invalid_quantity'] = {
+                'indices': issue_rows,
+                'excel_rows': excel_rows,
+                'sample': qty_issues
+            }
+            report.append(("❌ Invalid Quantities", 
+                         f"{len(qty_issues)} rows at spreadsheet rows: {excel_rows}"))
+            total_problems += len(qty_issues)
+
+    # Validation 3: Missing, Invalid or Unrecognized Weight Units
+    if 'weight_unit' not in df.columns:
+        report.append(("❌ Missing Column", "'weight_unit' column not found"))
+        total_problems += 1
+    else:
+        valid_units = dropdown_options.get('weight_unit', [])
+        valid_units_lower = [str(unit).lower() for unit in valid_units]
+        
+        invalid_units = df[
+            ~df['weight_unit'].astype(str).str.lower().isin(valid_units_lower)
+            | df['weight_unit'].isna()
+        ]
+        
+        if not invalid_units.empty:
+            issue_rows = invalid_units.index.tolist()
+            excel_rows = to_excel_rows(issue_rows)
+            issues['invalid_weight_unit'] = {
+                'indices': issue_rows,
+                'excel_rows': excel_rows,
+                'sample': invalid_units,
+                'valid_options': valid_units
+            }
+            report.append((
+                "❌ Invalid Weight Units", 
+                f"{len(invalid_units)} rows with invalid/missing units at spreadsheet rows: {excel_rows}. "
+                f"Valid options are: {', '.join(valid_units)}"
+            ))
+            total_problems += len(invalid_units)
+
+    # Validation 4: Missing, Not numeric or Negative Seizure in Kilograms
+    if 'seizure_kg' not in df.columns:
+        report.append(("❌ Missing Column", "'seizure_kg' column not found"))
+        total_problems += 1
+    else:
+        numeric_seizure = pd.to_numeric(df['seizure_kg'], errors='coerce')
+        invalid_seizure = df[
+            numeric_seizure.isna() |
+            (numeric_seizure < 0)
+        ]
+        if not invalid_seizure.empty:
+            issue_rows = invalid_seizure.index.tolist()
+            excel_rows = to_excel_rows(issue_rows)
+            issues['invalid_seizure_kg'] = {
+                'indices': issue_rows,
+                'excel_rows': excel_rows,
+                'sample': invalid_seizure
+            }
+            report.append(("❌ Invalid Seizure Weights", 
+                         f"{len(invalid_seizure)} rows at spreadsheet rows: {excel_rows}"))
+            total_problems += len(invalid_seizure)
+                        
+        # Validation 5: If quantity = Kilogram, then it must be = to seizure_kg 
+        if {'weight_unit', 'quantity', 'seizure_kg'}.issubset(df.columns):
+            
+            # Convert weight_unit to string to ensure .str accessor works
+            df['weight_unit'] = df['weight_unit'].astype(str)
+            # Convert to numeric (coerce errors to NaN)
+            qty = pd.to_numeric(df['quantity'], errors='coerce')
+            seizure = pd.to_numeric(df['seizure_kg'], errors='coerce')
+            
+            # Find mismatches where weight is kilogram
+            mismatch = df[
+                (df['weight_unit'] == 'Kilogram') & 
+                (qty.notna()) & 
+                (qty != seizure)
+            ]
+            
+            if not mismatch.empty:
+                issue_rows = mismatch.index.tolist()
+                issues['kg_quantity_mismatch'] = {
+                    'indices': issue_rows,
+                    'excel_rows': to_excel_rows(issue_rows),
+                    'sample': mismatch
+                }
+                report.append((
+                    "❌ Kilogram Quantity Mismatch",
+                    f"{len(issue_rows)} rows: {to_excel_rows(issue_rows)}"
+                ))
+                total_problems += len(issue_rows)
+    
+
+    # REPORT OUTPUT
+    print("="*80)
+    print(f"DRUGS & QUANTITIES REPORT (Problematic Rows in Total: {total_problems})".center(80))
+    print("="*80)
+
+    print("\nSUMMARY:")
+    for check, message in report:
+        print(f"{check:<30} {message}")
+
+    print("\n"+ "="*80)
+    print("PROBLEMATIC ROWS".center(80))
+    print("="*80)
+
+    for issue_name, data in issues.items():
+        if len(data['indices']) > 0:
+            print(f"\n{issue_name.replace('_', ' ').upper()} ({len(data['indices'])} ROWS)")
+            print(f"Spreadsheet Rows: {data['excel_rows']}")
+            print("\nProblematic Data:")
+            print(data['sample'].to_string(index=False))
+            print("-"*40)
+
+    print("\n" + "="*80)
+    print("Spreadsheet rows account for header row (pandas index + 2)")
+    print("="*80)
+
+    return issues
+
+drugs_and_quantities_report(df)
+
+
+
+def apply_conditional_formatting(sheet_service, spreadsheet_id, sheet_name, validation_results):
+    """" Apply LIGHT BLUE background formatting to specified rows."""
+    if not validation_results:
+        print("No validation issues found - nothing to highlight")
+        return
+    
+    # Collect all unique problematic rows from all validation issues
+    all_problem_rows = []
+    for issue in validation_results.values():
+        all_problem_rows.extend(issue['excel_rows'])
+    
+    # Remove duplicates and sort
+    all_problem_rows = sorted(list(set(all_problem_rows)))
+    
+    if not all_problem_rows:
+        print("No rows to highlight")
+        return
+    
+    try:
+        # First get the sheet ID from the sheet name
+        spreadsheet = sheet_service.spreadsheets().get(
+            spreadsheetId=spreadsheet_id,
+            fields="sheets(properties(sheetId,title))"
+        ).execute()
+        
+        sheet_id = None
+        for sheet in spreadsheet['sheets']:
+            if sheet['properties']['title'] == sheet_name:
+                sheet_id = sheet['properties']['sheetId']
+                break
+        
+        if not sheet_id:
+            print(f"Sheet '{sheet_name}' not found")
+            return
+        
+        # Build conditional formatting rules (batch all rows in one request for efficiency)
+        requests = {
+            "requests": [
+                {
+                    "addConditionalFormatRule": {
+                        "rule": {
+                            "ranges": [
+                                {
+                                    "sheetId": sheet_id,
+                                    "startRowIndex": row - 1,  # Convert to 0-based index
+                                    "endRowIndex": row,         # End is exclusive
+                                    "startColumnIndex": 0,
+                                    "endColumnIndex": 26        
+                                } for row in all_problem_rows
+                            ],
+                            "booleanRule": {
+                                "format": {
+                                    "backgroundColor": {
+                                        "red": 0.6,
+                                        "green": 0.8, 
+                                        "blue": 1.0
+                                    },
+                                    "textFormat": {
+                                        "bold": True
+                                    }
+                                },
+                                "condition": {
+                                    "type": "CUSTOM_FORMULA",
+                                    "values": [
+                                        {
+                                            "userEnteredValue": "=TRUE"
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        "index": 0
+                    }
+                }
+            ]
+        }
+        
+        # Execute the request
+        response = sheet_service.spreadsheets().batchUpdate(
+            spreadsheetId=spreadsheet_id,
+            body=requests
+        ).execute()
+        
+        print(f"Successfully highlighted {len(all_problem_rows)} problematic rows in LIGHT BLUE")
+        
+    except Exception as e:
+        print(f"Error applying conditional formatting: {str(e)}")
+
+
+validation_results = drugs_and_quantities_report(df)
+
+# Apply the formatting
+apply_conditional_formatting(
+    sheet_service=sheet_service,
+    spreadsheet_id=ORIGINAL_SPREADSHEET_ID,
+    sheet_name=RANGE_NAME,
+    validation_results=validation_results
+)
+
+
+-------------
+
+def modus_operandi_place_seizure_report(df):
+    report = []
+    issues = {}
+    total_problems = 0
+
+    def to_excel_rows(indices):
+        return [i + 2 for i in indices]  # For spreadsheet row reference
+
+    # Validation 1: Missing Modus Operandi/Place of Seizure
+    if 'modus_operandi/place_seizure' not in df.columns:
+        report.append(("❌ Missing Column", "'modus_operandi/place_seizure' column not found"))
+        total_problems += 1
+    else:
+        invalid_modus = df[df['modus_operandi/place_seizure'].isna() | df['modus_operandi/place_seizure'].str.lower().isin(['', 'unknown', 'n/a', 'na'])]
+        if not invalid_modus.empty:
+            issue_rows = invalid_modus.index.tolist()
+            excel_rows = to_excel_rows(issue_rows)
+            issues['invalid_modus_operandi'] = {
+                'indices': issue_rows,
+                'excel_rows': excel_rows,
+                'sample': invalid_modus
+            }
+            report.append(("❌ Invalid Modus Operandi", 
+                         f"{len(invalid_modus)} rows at spreadsheet rows: {excel_rows}"))
+            total_problems += len(invalid_modus)
+
+    # Validation 2: Missing Sub_modus_operandi
+    if 'sub_modus_operandi' not in df.columns:
+        report.append(("❌ Missing Column", "'sub_modus_operandi' column not found"))
+        total_problems += 1
+    else:
+        invalid_sub_modus = df[df['sub_modus_operandi'].isna() | df['sub_modus_operandi'].str.lower().isin(['', 'unknown', 'n/a', 'na'])]
+        if not invalid_sub_modus.empty:
+            issue_rows = invalid_sub_modus.index.tolist()
+            excel_rows = to_excel_rows(issue_rows)
+            issues['invalid_sub_modus_operandi'] = {
+                'indices': issue_rows,
+                'excel_rows': excel_rows,
+                'sample': invalid_sub_modus
+            }
+            report.append(("❌ Invalid Sub Modus Operandi", 
+                         f"{len(invalid_sub_modus)} rows at spreadsheet rows: {excel_rows}"))
+            total_problems += len(invalid_sub_modus)
+            
+
+    # REPORT OUTPUT
+    print("="*80)
+    print(f"MODUS OPERANDI & PLACE OF SEIZURE REPORT (Problematic Rows in Total: {total_problems})".center(80))
+    print("="*80)
+
+    print("\nSUMMARY:")
+    for check, message in report:
+        print(f"{check:<30} {message}")
+
+    print("\n"+ "="*80)
+    print("PROBLEMATIC ROWS".center(80))
+    print("="*80)
+
+    for issue_name, data in issues.items():
+        if len(data['indices']) > 0:
+            print(f"\n🔴 {issue_name.replace('_', ' ').upper()} ({len(data['indices'])} ROWS)")
+            print(f"Spreadsheet Rows: {data['excel_rows']}")
+            print("\nProblematic Data:")
+            print(data['sample'].to_string(index=False))
+            print("-"*40)
+
+    print("\n" + "="*80)
+    print("ℹ️ Spreadsheet rows account for header row (pandas index + 2)")
+    print("="*80)
+
+    return issues
+
+modus_operandi_place_seizure_report(df)
+
+
+
+def apply_conditional_formatting(sheet_service, spreadsheet_id, sheet_name, validation_results):
+    """" Apply LIGHT YELLOW background formatting to specified rows."""
+    if not validation_results:
+        print("No validation issues found - nothing to highlight")
+        return
+    
+    # Collect all unique problematic rows from all validation issues
+    all_problem_rows = []
+    for issue in validation_results.values():
+        all_problem_rows.extend(issue['excel_rows'])
+    
+    # Remove duplicates and sort
+    all_problem_rows = sorted(list(set(all_problem_rows)))
+    
+    if not all_problem_rows:
+        print("No rows to highlight")
+        return
+    
+    try:
+        # First get the sheet ID from the sheet name
+        spreadsheet = sheet_service.spreadsheets().get(
+            spreadsheetId=spreadsheet_id,
+            fields="sheets(properties(sheetId,title))"
+        ).execute()
+        
+        sheet_id = None
+        for sheet in spreadsheet['sheets']:
+            if sheet['properties']['title'] == sheet_name:
+                sheet_id = sheet['properties']['sheetId']
+                break
+        
+        if not sheet_id:
+            print(f"Sheet '{sheet_name}' not found")
+            return
+        
+        # Build conditional formatting rules (batch all rows in one request for efficiency)
+        requests = {
+            "requests": [
+                {
+                    "addConditionalFormatRule": {
+                        "rule": {
+                            "ranges": [
+                                {
+                                    "sheetId": sheet_id,
+                                    "startRowIndex": row - 1,  # Convert to 0-based index
+                                    "endRowIndex": row,         # End is exclusive
+                                    "startColumnIndex": 0,
+                                    "endColumnIndex": 26        
+                                } for row in all_problem_rows
+                            ],
+                            "booleanRule": {
+                                "format": {
+                                    "backgroundColor": {
+                                        "red": 1.0,
+                                        "green": 1.0, 
+                                        "blue": 0.6
+                                    },
+                                    "textFormat": {
+                                        "bold": True
+                                    }
+                                },
+                                "condition": {
+                                    "type": "CUSTOM_FORMULA",
+                                    "values": [
+                                        {
+                                            "userEnteredValue": "=TRUE"
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        "index": 0
+                    }
+                }
+            ]
+        }
+        
+        # Execute the request
+        response = sheet_service.spreadsheets().batchUpdate(
+            spreadsheetId=spreadsheet_id,
+            body=requests
+        ).execute()
+        
+        print(f"Successfully highlighted {len(all_problem_rows)} problematic rows in LIGHT YELLOW")
+        
+    except Exception as e:
+        print(f"Error applying conditional formatting: {str(e)}")
+
+
+validation_results = modus_operandi_place_seizure_report(df)
+
+# Apply the formatting
+apply_conditional_formatting(
+    sheet_service=sheet_service,
+    spreadsheet_id=ORIGINAL_SPREADSHEET_ID,
+    sheet_name=RANGE_NAME,
+    validation_results=validation_results
+=======
+#====== RUN ONLY FOR TESTS =========
+ 
+# Create a copy of the latest version of the original spreadsheet in Google Drive. 
+
+# Create dated title for demo/test copy
+today_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+copy_title = f'Validation Test Copy - {today_str}'
+
+# Create a copy with today's date
+copy_body = {'name': copy_title, 'parents': ['root']}
+copied_file = drive_service.files().copy(
+    fileId=ORIGINAL_SPREADSHEET_ID,
+    body=copy_body
+).execute()
+
+# Use the ID of the new copy for analysis
+SPREADSHEET_ID = copied_file['id']
+
+print(f"✅ Spreadsheet copied on {today_str}. New ID: {SPREADSHEET_ID}")
+
+# URL
+print(f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}")
+
+
+# List of email addresses to share with
+email_list = [
+    'lvillota@insightcrime.org',
+    'villotamacias@gmail.com'#,
+    #'jmanjarres@insightcrime.org',
+    #'cnewton@insightcrime.org',
+    #'mcavalari@insightcrime.org'
+]
+
+# Share with each email in the list
+for email in email_list:
+    drive_service.permissions().create(
+        fileId=SPREADSHEET_ID,
+        body={
+            'type': 'user',
+            'role': 'writer',
+            'emailAddress': email
+        },
+        fields='id'
+    ).execute()
+    print(f"Shared with {email}")
+
+# URL
+print(f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}")
+
+
+
+
+
+
+--------------
+
+
+# Update a column name directly in Google Sheets
+def update_column_name(old_name, new_name):
+    # Get headers
+    headers = sheet.values().get(spreadsheetId=SPREADSHEET_ID, range='2025!1:1').execute()['values'][0]
+    
+    # Find and update column
+    if old_name in headers:
+        col_index = headers.index(old_name)
+        col_letter = chr(65 + col_index)  # Convert to A, B, C...
+        
+        # Update in sheet
+        sheet.values().update(
+            spreadsheetId=SPREADSHEET_ID,
+            range=f'2025!{col_letter}1',
+            valueInputOption='RAW',
+            body={'values': [[new_name]]}
+        ).execute()
+        
+        print(f"✅ '{old_name}' → '{new_name}'")
+    else:
+        print(f"❌ '{old_name}' not found")
+
+# Function usage
+update_column_name('Type', 'TIPO')
+
+# Refresh DataFrame
+result = sheet.values().get(spreadsheetId=SPREADSHEET_ID, range=RANGE_NAME).execute()
+values = result.get('values', [])
+df = pd.DataFrame(values[1:], columns=values[0])
+
+
+
+# Format dates directly in Google Sheets
+def format_dates(date_column_name='Date'):
+    # Get all data
+    result = sheet.values().get(spreadsheetId=SPREADSHEET_ID, range=RANGE_NAME).execute()
+    values = result.get('values', [])
+    
+    if not values:
+        print("❌ No data found")
+        return
+    
+    headers = values[0]
+    if date_column_name not in headers:
+        print(f"❌ '{date_column_name}' column not found")
+        return
+    
+    col_index = headers.index(date_column_name)
+    col_letter = chr(65 + col_index)
+    
+    # Process dates
+    updated_values = []
+    for i, row in enumerate(values[1:], 2):  # Start from row 2
+        if col_index < len(row) and row[col_index]:
+            try:
+                # Parse date (assuming YYYY-MM-DD format)
+                date_obj = datetime.strptime(row[col_index], "%Y-%m-%d")
+                # Format to DD-MM-YYYY
+                formatted_date = date_obj.strftime("%d-%m-%Y")
+                updated_values.append([formatted_date])
+            except ValueError:
+                # Keep original if can't parse
+                updated_values.append([row[col_index]])
+        else:
+            updated_values.append([''])
+    
+    # Update the entire date column
+    if updated_values:
+        sheet.values().update(
+            spreadsheetId=SPREADSHEET_ID,
+            range=f'2025!{col_letter}2:{col_letter}{len(updated_values)+1}',
+            valueInputOption='RAW',
+            body={'values': updated_values}
+        ).execute()
+        
+        print(f"✅ Dates formatted to DD-MM-YYYY in column {col_letter}")
+
+# Function usage
+format_dates('Date')  # or whatever your date column is called
+
+
+# Date must not be empty
+def validate_dates(df, date_column='Date'):
+    if date_column not in df.columns:
+        print(f"❌ Column '{date_column}' not found")
+        return
+    
+    # Check for empty dates
+    empty_dates = df[df[date_column].isna()]
+    
+    if not empty_dates.empty:
+        print(f"❌ Found {len(empty_dates)} rows with empty '{date_column}' dates:")
+        print(empty_dates)
+    else:
+        print(f"✅ All '{date_column}' dates are filled")
+
+
+validate_dates(df)
+
+
+# Why is there Duration if there is no Date 2?  
+def validate_duration(df, date_column='Date', date2_column='Date 2', duration_column='Duration'):
+    if date_column not in df.columns or date2_column not in df.columns or duration_column not in df.columns:
+        print(f"❌ One or more columns '{date_column}', '{date2_column}', or '{duration_column}' not found")
+        return
+    
+    # Check for rows where Date 2 is empty but Duration is filled
+    invalid_rows = df[(df[date2_column].isna()) & (df[duration_column].notna())]
+    
+    if not invalid_rows.empty:
+        print(f"❌ Found {len(invalid_rows)} rows with '{duration_column}' filled but '{date2_column}' empty:")
+        print(invalid_rows)
+    else:
+        print(f"✅ All '{duration_column}' values are valid with respect to '{date2_column}'")
+
+validate_duration(df)
+
+
+# Check if Date 2 is filed, then Time unit is not Individual
+def validate_time_unit(df, date2_column='Date 2', time_unit_column='Time unit'):
+    if date2_column not in df.columns or time_unit_column not in df.columns:
+        print(f"❌ One or more columns '{date2_column}' or '{time_unit_column}' not found")
+        return
+    
+    # Check for rows where Date 2 is filled but Time unit is 'Individual'
+    invalid_rows = df[(df[date2_column].notna()) & (df[time_unit_column] == 'Individual')]
+    
+    if not invalid_rows.empty:
+        print(f"❌ Found {len(invalid_rows)} rows with '{time_unit_column}' as 'Individual' but '{date2_column}' filled:")
+        print(invalid_rows)
+    else:
+        print(f"✅ All '{time_unit_column}' values are valid with respect to '{date2_column}'") 
+
+validate_time_unit(df)
+
+
+----------------------
+
+
+# 1. Identify mismatches between 'Weight unit' and 'Quantity' vs 'seizure_kgs'
+df['kg_unit_mismatch'] = (
+    (df['Weight unit'].str.lower() == 'Kilogram') &
+    (df['Quantity'] != df['seizure_kgs'])
+)
+
+# 2. Count of mismatches by weight unit
+unit_mismatch_counts = df[df['kg_unit_mismatch']].groupby('Weight unit').size().reset_index(name='count')
+
+# 3. Plot mismatches
+plt.figure(figsize=(8, 5))
+sns.barplot(data=unit_mismatch_counts, x='Weight unit', y='count', palette='Reds')
+plt.title("Mismatches Between Quantity and Seizure_kgs by Weight Unit")
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
+
+-------
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+plt.figure(figsize=(10, 6))
+
+# Boxplot with grey boxes
+sns.boxplot(data=df, x='Type Drugs', y='seizure_kgs', color='grey')
+
+# Log scale on y-axis
+plt.yscale('log')
+
+# Red horizontal line at y=1 (which is 10^0)
+plt.axhline(y=1, color='red', linestyle='--', linewidth=1.5)
+
+plt.title("Log-Scale Seizure_kgs Distribution by Drug Type")
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
+
+-------
+
+
+# Convert and clean seizure data
+df['seizure_kgs'] = pd.to_numeric(df['seizure_kgs'], errors='coerce')
+
+# Create pivot tables with matching structure
+pivot_data = df.groupby(['Year', 'Month']).agg(
+    seizure_kg=('seizure_kgs', 'sum'),
+    event_count=('seizure_kgs', 'count')
+).unstack(level=0)
+
+# Extract components
+seizure_kg = pivot_data['seizure_kg']
+event_counts = pivot_data['event_count']
+
+# Fill NaN values with 0 if appropriate, or use mask
+seizure_kg_filled = seizure_kg.fillna(0)
+
+# Plot combined heatmap
+plt.figure(figsize=(12,6))
+ax = sns.heatmap(
+    seizure_kg_filled.sort_index(ascending=False),
+    cmap="Greys",
+    annot=event_counts.sort_index(ascending=False),
+    fmt='g',
+    cbar_kws={'label': 'Total Seizure (kg)'},
+    linewidths=0.5,  # Adds grid lines between cells
+    linecolor='lightgray'  # Color for grid lines
+)
+
+# Title and labels
+plt.title("Monthly Seizures by Year\n(Event Counts shown as numbers, Quantity shown by shading)")
+plt.ylabel("Month")
+plt.xlabel("Year")
+
+# Rotate year labels if needed
+ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha='right')
+
+plt.tight_layout()
+plt.show()
+-----
+
+
+
+# Convert NA values to empty strings
+df = df.fillna('')
+
+# Prepare data to write back to Google Sheet
+headers = list(df.columns)
+data = df.values.tolist()
+updated_values = [headers] + data
+
+# Clear the existing data first
+sheet.values().clear(
+    spreadsheetId=TEST_SPREADSHEET_ID,
+    range=RANGE_NAME
+).execute()
+
+# Update with new data
+update_request = {
+    'values': updated_values
+}
+
+sheet.values().update(
+    spreadsheetId=TEST_SPREADSHEET_ID,
+    range=RANGE_NAME,
+    valueInputOption='RAW',
+    body=update_request
+).execute()
+
+print("Column names updated successfully in Google Sheets!")
+
+------------------
+
+def extract_data_validations(sheet_service, spreadsheet_id, sheet_name, max_rows=200):
+    # Get sheetId
+    spreadsheet = sheet_service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
+    sheet_id = next(
+        (s['properties']['sheetId'] for s in spreadsheet['sheets'] if s['properties']['title'] == sheet_name), 
+        None
+    )
+    if sheet_id is None:
+        print(f"❌ Sheet name '{sheet_name}' not found.")
+        return []
+
+    # Fetch limited grid data only for a small range (e.g., first 200 rows)
+    sheet_data = sheet_service.spreadsheets().get(
+        spreadsheetId=spreadsheet_id,
+        ranges=[f"{sheet_name}!A1:Z{max_rows}"],  # Limit to first 26 columns and max_rows
+        fields="sheets.data.rowData.values.dataValidation"
+    ).execute()
+
+    validations = []
+    row_data = sheet_data['sheets'][0].get('data', [])[0].get('rowData', [])
+    
+    for row_idx, row in enumerate(row_data):
+        for col_idx, cell in enumerate(row.get('values', [])):
+            dv = cell.get('dataValidation')
+            if dv:
+                condition = dv.get('condition', {})
+                values = [v.get('userEnteredValue') for v in condition.get('values', [])]
+                validations.append({
+                    "row": row_idx + 1,
+                    "column": col_idx + 1,
+                    "type": condition.get('type'),
+                    "values": values
+                })
+
+    print(f"✅ Found {len(validations)} data validations in first {max_rows} rows.")
+    return validations
+
+validations = extract_data_validations(
+    sheet_service=sheet_service,
+    spreadsheet_id=TEST_SPREADSHEET_ID,
+    sheet_name="2025",
+    max_rows=300  # Tune as needed
+)
+
+for v in validations:
+    print(v)
+
+WYSIWYG, simpler and better with each iteration
+
+
+
+--------------
+
+
+def event_metadata_report(df):
+    report = []
+    issues = {}
+    total_problems = 0  # Initialize counter for total problems
+    
+    # Convert pandas indices to spreadsheet rows (+2 for header + zero-index)
+    def to_excel_rows(indices):
+        return [i+2 for i in indices]  # For spreadsheet row reference
+
+    # Validation 1: Empty Dates
+    if 'date_1' not in df.columns:
+        report.append(("❌ Missing Column", "'date' column not found"))
+        total_problems += 1  # Count missing column as a problem
+    else:
+        empty_dates = df[df['date_1'].isna()]
+        if not empty_dates.empty:
+            issue_rows = empty_dates.index.tolist()
+            excel_rows = to_excel_rows(issue_rows)
+            issues['empty_dates'] = {
+                'indices': issue_rows,
+                'excel_rows': excel_rows,
+                'sample': empty_dates
+            }
+            report.append(("❌ Empty Dates", 
+                         f"{len(empty_dates)} rows at spreadsheet rows: {excel_rows}"))
+            total_problems += len(empty_dates)
+
+    # Validation 2: Duration without Date 2
+    missing_cols = [col for col in ['date_1', 'date_2', 'duration'] if col not in df.columns]
+    if missing_cols:
+        report.append(("❌ Missing Columns", f"Columns not found: {', '.join(missing_cols)}"))
+        total_problems += len(missing_cols)  # Count each missing column
+    else:
+        invalid_duration = df[(df['date_2'].isna()) & (df['duration'].notna())]
+        if not invalid_duration.empty:
+            issue_rows = invalid_duration.index.tolist()
+            excel_rows = to_excel_rows(issue_rows)
+            issues['invalid_duration'] = {
+                'indices': issue_rows,
+                'excel_rows': excel_rows,
+                'sample': invalid_duration
+            }
+            report.append(("❌ Duration Conflict", 
+                         f"{len(invalid_duration)} rows at spreadsheet rows: {excel_rows}"))
+            total_problems += len(invalid_duration)
+
+    # Validation 3: Time unit inconsistency
+    if 'time_unit' not in df.columns:
+        report.append(("❌ Missing Column", "'time_unit' column not found"))
+        total_problems += 1  # Count missing column
+    else:
+        invalid_time = df[(df['date_2'].notna()) & (df['time_unit'] == 'Individual')]
+        if not invalid_time.empty:
+            issue_rows = invalid_time.index.tolist()
+            excel_rows = to_excel_rows(issue_rows)
+            issues['invalid_time'] = {
+                'indices': issue_rows,
+                'excel_rows': excel_rows,
+                'sample': invalid_time
+            }
+            report.append(("❌ Time Unit Conflict", 
+                         f"{len(invalid_time)} rows at spreadsheet rows: {excel_rows}"))
+            total_problems += len(invalid_time) 
+
+    # Print formatted report
+    print("="*80)
+    print(f"EVENT METADATA REPORT (Problematic Rows in Total: {total_problems})".center(80))
+    print("="*80)
+    
+    # Summary section
+    print("\nSUMMARY:")
+    for check, message in report:
+        print(f"{check:<30} {message}")
+    
+    # Problematic rows
+    print("\n"+ "="*80)
+    print("PROBLEMATIC ROWS".center(80))
+    print("="*80)
+    
+    for issue_name, data in issues.items():
+        if len(data['indices']) > 0:
+            print(f"\n🔴 {issue_name.replace('_', ' ').upper()} ({len(data['indices'])} ROWS)")
+            print(f"Spreadsheet Rows: {data['excel_rows']}")
+            print("\nProblematic Data:")
+            print(data['sample'].to_string(index=False))
+            print("-"*40)
+    
+    print("\n" + "="*80)
+    print("ℹ️ Spreadsheet rows account for header row (pandas index + 2)")
+    print("="*80)
+    
+    return issues
+
+# Usage
+validation_results = event_metadata_report(df)
+
+
+def apply_conditional_formatting(sheet_service, spreadsheet_id, sheet_name, rows_to_highlight):
+    """Apply RED background formatting to specified rows."""
+    if not rows_to_highlight:
+        print("No rows to highlight")
+        return
+    
+    # Build conditional formatting rules (batch all rows in one request for efficiency)
+    requests = {
+        "requests": [
+            {
+                "addConditionalFormatRule": {
+                    "rule": {
+                        "ranges": [
+                            {
+                                "sheetId": sheet_name,  # This should be the sheet ID, not name
+                                "startRowIndex": row - 1,  # Convert to 0-based index
+                                "endRowIndex": row,       # End is exclusive
+                                "startColumnIndex": 0,
+                                "endColumnIndex": 0      # Applies to all existing and future columns
+                            } for row in rows_to_highlight
+                        ],
+                        "booleanRule": {
+                            "format": {
+                                "backgroundColor": {
+                                    "red": 1.0,
+                                    "green": 0.6,
+                                    "blue": 0.6
+                                }
+                            },
+                            "condition": {
+                                "type": "CUSTOM_FORMULA",
+                                "values": [
+                                    {
+                                        "userEnteredValue": "=TRUE"
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    "index": 0
+                }
+            }
+        ]
+    }
+    
+    try:
+        # First we need to get the sheet ID from the sheet name
+        spreadsheet = sheet_service.spreadsheets().get(
+            spreadsheetId=spreadsheet_id,
+            fields="sheets(properties(sheetId,title))"
+        ).execute()
+        
+        sheet_id = None
+        for sheet in spreadsheet['sheets']:
+            if sheet['properties']['title'] == sheet_name:
+                sheet_id = sheet['properties']['sheetId']
+                break
+        
+        if not sheet_id:
+            print(f"Sheet '{sheet_name}' not found")
+            return
+        
+        # Update the requests with the correct sheet IDs
+        for request in requests['requests']:
+            for range_ in request['addConditionalFormatRule']['rule']['ranges']:
+                range_['sheetId'] = sheet_id
+        
+        # Execute the request
+        response = sheet_service.spreadsheets().batchUpdate(
+            spreadsheetId=spreadsheet_id,
+            body=requests
+        ).execute()
+        
+        print(f"Successfully highlighted {len(rows_to_highlight)} rows in red")
+        
+    except Exception as e:
+        print(f"Error applying conditional formatting: {str(e)}")
+
+# Get all problematic rows from validation results
+all_problem_rows = []
+for issue in validation_results.values():
+    all_problem_rows.extend(issue['excel_rows'])
+
+# Remove duplicates and sort
+all_problem_rows = sorted(list(set(all_problem_rows)))
+
+# Apply the formatting
+apply_conditional_formatting(
+    sheet_service=sheet_service,
+    spreadsheet_id=ORIGINAL_SPREADSHEET_ID,
+    sheet_name=RANGE_NAME, 
+    rows_to_highlight=all_problem_rows
+>>>>>>> f21f490c1 (mint)
+)
+
+#---------------------
+
+# Loading data as df
+ 
+# Call the Sheets API to read data
+sheet = sheet_service.spreadsheets()
+result = sheet.values().get(spreadsheetId=ORIGINAL_SPREADSHEET_ID, range=RANGE_NAME).execute()
+values = result.get('values', [])
+
+# Convert to DataFrame for easier manipulation
+df = pd.DataFrame(values[1:], columns=values[0])
+print(df.head()) 
+
+#----------------------
+
+# import pandas as pd
+# import matplotlib.pyplot as plt
+# import numpy as np
+# from datetime import datetime
+# import seaborn as sns
+
+# # Assuming your dataframe is called 'df'
+# # First, let's prepare the data
+
+# def create_origin_country_plots(df):
+#     """
+#     Create stacked area plots for each origin country showing monthly drug seizures by type
+#     """
+    
+#     # Filter data to only include rows with origin country and seizure data
+#     filtered_df = df.dropna(subset=['Origin country', 'seizure_kgs', 'Year-Month'])
+    
+#     # Get unique origin countries
+#     origin_countries = filtered_df['Origin country'].unique()
+    
+#     # Get all unique drug types across all origin countries to create consistent color mapping
+#     all_drug_types = filtered_df['Type Drugs'].unique()
+#     print(f"Found {len(origin_countries)} origin countries: {origin_countries}")
+#     print(f"Found {len(all_drug_types)} drug types: {all_drug_types}")
+    
+#     # Set up the plotting style and create consistent color mapping
+#     plt.style.use('default')
+#     colors = plt.cm.tab20(np.linspace(0, 1, len(all_drug_types)))  # Use tab20 colormap for more distinct colors
+#     drug_color_map = dict(zip(all_drug_types, colors))
+    
+#     # Calculate number of subplots needed
+#     n_countries = len(origin_countries)
+#     n_cols = 2  # Two columns of plots
+#     n_rows = (n_countries + n_cols - 1) // n_cols  # Ceiling division
+    
+#     # Create figure with subplots
+#     fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, 5 * n_rows))
+    
+#     # If only one row, make axes a 2D array for consistency
+#     if n_rows == 1:
+#         axes = axes.reshape(1, -1)
+#     elif n_countries == 1:
+#         axes = np.array([[axes]])
+    
+#     # Flatten axes for easier iteration
+#     axes_flat = axes.flatten()
+    
+#     for i, country in enumerate(origin_countries):
+#         ax = axes_flat[i]
+        
+#         # Filter data for this origin country
+#         country_data = filtered_df[filtered_df['Origin country'] == country].copy()
+        
+#         # Group by Year-Month and Type Drugs, sum the seizures
+#         monthly_data = country_data.groupby(['Year-Month', 'Type Drugs'])['seizure_kgs'].sum().reset_index()
+        
+#         # Pivot to get drug types as columns
+#         pivot_data = monthly_data.pivot(index='Year-Month', columns='Type Drugs', values='seizure_kgs')
+#         pivot_data = pivot_data.fillna(0)  # Fill NaN with 0
+        
+#         # Ensure all drug types are present (with 0 values if missing)
+#         for drug_type in all_drug_types:
+#             if drug_type not in pivot_data.columns:
+#                 pivot_data[drug_type] = 0
+        
+#         # Reorder columns to match the order in all_drug_types for consistency
+#         pivot_data = pivot_data[all_drug_types]
+        
+#         # Sort by date
+#         pivot_data = pivot_data.sort_index()
+        
+#         if len(pivot_data) == 0:
+#             ax.text(0.5, 0.5, f'No data for\n{country}', 
+#                    horizontalalignment='center', verticalalignment='center',
+#                    transform=ax.transAxes, fontsize=12)
+#             ax.set_title(f'{country}')
+#             continue
+        
+#         # Convert Period index to datetime for plotting
+#         pivot_data.index = pivot_data.index.to_timestamp()
+        
+#         # Create stacked area plot with consistent colors
+#         colors_for_plot = [drug_color_map[drug] for drug in pivot_data.columns]
+#         ax.stackplot(pivot_data.index, 
+#                     *[pivot_data[col] for col in pivot_data.columns],
+#                     labels=pivot_data.columns,
+#                     colors=colors_for_plot,
+#                     alpha=0.7)
+        
+#         # Customize the plot
+#         ax.set_title(f'{country}\nTotal Seizures by Drug Type', fontsize=12, fontweight='bold')
+#         ax.set_xlabel('Date')
+#         ax.set_ylabel('Quantity Seized (kg)')
+        
+#         # Format x-axis dates
+#         ax.tick_params(axis='x', rotation=45)
+        
+#         # Add legend
+#         ax.legend(loc='upper left', bbox_to_anchor=(1, 1), fontsize=8)
+        
+#         # Add grid for better readability
+#         ax.grid(True, alpha=0.3)
+        
+#         # Format y-axis to show thousands separator
+#         ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{x:,.0f}'))
+    
+#     # Hide empty subplots
+#     for j in range(i + 1, len(axes_flat)):
+#         axes_flat[j].set_visible(False)
+    
+#     # Create a master legend outside the plots showing all drug types with consistent colors
+#     handles = []
+#     labels = []
+#     for drug_type in all_drug_types:
+#         handles.append(plt.Rectangle((0,0),1,1, facecolor=drug_color_map[drug_type], alpha=0.7))
+#         labels.append(drug_type)
+    
+#     # Add master legend to the figure
+#     fig.legend(handles, labels, loc='center left', bbox_to_anchor=(1, 0.5), 
+#                title='Drug Types', title_fontsize=12, fontsize=10)
+    
+#     # Adjust layout to accommodate legend
+#     plt.tight_layout()
+#     plt.subplots_adjust(right=0.85)  # Make room for the legend
+#     plt.show()
+    
+#     # Also create a summary table
+#     print("\nSummary by Origin Country:")
+#     print("=" * 50)
+    
+#     summary_stats = []
+#     for country in origin_countries:
+#         country_data = filtered_df[filtered_df['Origin country'] == country]
+#         total_seizures = country_data['seizure_kgs'].sum()
+#         n_incidents = len(country_data)
+#         drug_types = country_data['Type Drugs'].nunique()
+#         date_range = f"{country_data['date'].min().strftime('%Y-%m')} to {country_data['date'].max().strftime('%Y-%m')}"
+        
+#         summary_stats.append({
+#             'Origin Country': country,
+#             'Total Seizures (kg)': f"{total_seizures:,.1f}",
+#             'Number of Incidents': n_incidents,
+#             'Drug Types': drug_types,
+#             'Date Range': date_range
+#         })
+    
+#     summary_df = pd.DataFrame(summary_stats)
+#     print(summary_df.to_string(index=False))
+    
+
+
+# # Additional function to create individual plots if needed
+# def create_individual_country_plot(df, country_name):
+#     """
+#     Create a detailed plot for a specific origin country with consistent colors
+#     """
+#     filtered_df = df.dropna(subset=['Origin country', 'seizure_kgs', 'Year-Month'])
+    
+#     # Get all unique drug types for consistent coloring
+#     all_drug_types = filtered_df['Type Drugs'].unique()
+#     colors = plt.cm.tab20(np.linspace(0, 1, len(all_drug_types)))
+#     drug_color_map = dict(zip(all_drug_types, colors))
+    
+#     country_data = filtered_df[filtered_df['Origin country'] == country_name].copy()
+    
+#     if len(country_data) == 0:
+#         print(f"No data found for {country_name}")
+#         return None
+    
+#     # Group by Year-Month and Type Drugs
+#     monthly_data = country_data.groupby(['Year-Month', 'Type Drugs'])['seizure_kgs'].sum().reset_index()
+#     pivot_data = monthly_data.pivot(index='Year-Month', columns='Type Drugs', values='seizure_kgs')
+#     pivot_data = pivot_data.fillna(0)
+    
+#     # Ensure all drug types are present (with 0 values if missing)
+#     for drug_type in all_drug_types:
+#         if drug_type not in pivot_data.columns:
+#             pivot_data[drug_type] = 0
+    
+#     # Reorder columns to match the order in all_drug_types for consistency
+#     pivot_data = pivot_data[all_drug_types]
+#     pivot_data = pivot_data.sort_index()
+#     pivot_data.index = pivot_data.index.to_timestamp()
+    
+#     # Create larger individual plot
+#     plt.figure(figsize=(12, 8))
+#     colors_for_plot = [drug_color_map[drug] for drug in pivot_data.columns]
+#     plt.stackplot(pivot_data.index, 
+#                  *[pivot_data[col] for col in pivot_data.columns],
+#                  labels=pivot_data.columns,
+#                  colors=colors_for_plot,
+#                  alpha=0.7)
+    
+#     plt.title(f'Drug Seizures from {country_name}\nMonthly Quantities by Type', 
+#               fontsize=16, fontweight='bold')
+#     plt.xlabel('Date', fontsize=12)
+#     plt.ylabel('Quantity Seized (kg)', fontsize=12)
+#     plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+#     plt.grid(True, alpha=0.3)
+#     plt.xticks(rotation=45)
+#     plt.tight_layout()
+#     plt.show()
+    
+#     return pivot_data
+
+# # Usage:
+# create_origin_country_plots(df)
+# # 
+# # For individual country plots:
+# # create_individual_country_plot(df, 'Colombia')  # Replace with actual country name
+
+
+##### Conversion system: new column to metric tons (EXPERIMENT)
+
+Multiply quantity 'qty' by respective factor to transform units
+
+| Unit       | To Grams (g) | To Kilograms (kg) | To Metric Tons (t)  |
+|------------|--------------|-------------------|---------------------|
+| 1 Pound    | 453.59237 g  | 0.45359237 kg     | 0.00045359237 t     |
+| 1 Kilogram | 1000 g       | 1 kg              | 0.001 t             |
+| 1 Gram     | 1 g          | 0.001 kg          | 0.000001 t          |
+| 1 Metric Ton | 1,000,000 g | 1000 kg           | 1 t                 |
+
+def insert_and_convert_to_metric_tons(sheet_service, spreadsheet_id, sheet_name,
+                                      seizure_kg_col_letter='L',
+                                      quantity_col_letter='J',
+                                      weight_unit_col_letter='K',
+                                      pounds_labels=('Pounds (lbs)'),
+                                      kilogram_label='Kilogram'):
+    """
+    New column after 'seizure_kg', called 'metric_tons', and populated based on the weight unit (lbs & kg → metric tons).
+    """
+    try:
+        # Get sheet ID
+        spreadsheet = sheet_service.spreadsheets().get(
+            spreadsheetId=spreadsheet_id,
+            fields="sheets.properties"
+        ).execute()
+
+        sheet_id = None
+        for sheet in spreadsheet['sheets']:
+            if sheet['properties']['title'] == sheet_name:
+                sheet_id = sheet['properties']['sheetId']
+                break
+        if sheet_id is None:
+            print(f"Sheet '{sheet_name}' not found")
+            return
+
+        # Calculate index to insert new column
+        insert_index = ord(seizure_kg_col_letter.upper()) - ord('A') + 1  # insert AFTER seizure_kg
+
+        # Insert column
+        insert_request = {
+            "requests": [{
+                "insertDimension": {
+                    "range": {
+                        "sheetId": sheet_id,
+                        "dimension": "COLUMNS",
+                        "startIndex": insert_index,
+                        "endIndex": insert_index + 1
+                    },
+                    "inheritFromBefore": True
+                }
+            }]
+        }
+
+        sheet_service.spreadsheets().batchUpdate(
+            spreadsheetId=spreadsheet_id,
+            body=insert_request
+        ).execute()
+
+        # Set new column letter (after insertion)
+        new_col_letter = chr(ord(seizure_kg_col_letter.upper()) + 1)
+
+        # Set header to "metric_tons"
+        header_range = f"{sheet_name}!{new_col_letter}1"
+        sheet_service.spreadsheets().values().update(
+            spreadsheetId=spreadsheet_id,
+            range=header_range,
+            valueInputOption="USER_ENTERED",
+            body={"values": [["metric_tons"]]}
+        ).execute()
+
+        # SFetch quantity and weight unit columns
+        quantity_range = f"{sheet_name}!{quantity_col_letter}2:{quantity_col_letter}"
+        unit_range = f"{sheet_name}!{weight_unit_col_letter}2:{weight_unit_col_letter}"
+        output_range = f"{sheet_name}!{new_col_letter}2:{new_col_letter}"
+
+        quantity_values = sheet_service.spreadsheets().values().get(
+            spreadsheetId=spreadsheet_id, range=quantity_range).execute().get('values', [])
+        unit_values = sheet_service.spreadsheets().values().get(
+            spreadsheetId=spreadsheet_id, range=unit_range).execute().get('values', [])
+
+        # Normalize lengths
+        max_len = max(len(quantity_values), len(unit_values))
+        quantity_values += [[]] * (max_len - len(quantity_values))
+        unit_values += [[]] * (max_len - len(unit_values))
+
+        # Convert values
+        converted_values = []
+        for qty_row, unit_row in zip(quantity_values, unit_values):
+            qty = qty_row[0] if qty_row else ''
+            unit = unit_row[0].strip() if unit_row else ''
+            try:
+                qty_num = float(str(qty).replace(',', '').strip())
+                if unit in pounds_labels:
+                    converted = round(qty_num * 0.00045359237, 4)
+                elif unit == kilogram_label:
+                    converted = round(qty_num / 1000, 4)
+                else:
+                    converted = ''
+            except Exception:
+                converted = ''
+            converted_values.append([converted])
+
+        # Write converted values
+        sheet_service.spreadsheets().values().update(
+            spreadsheetId=spreadsheet_id,
+            range=output_range,
+            valueInputOption="USER_ENTERED",
+            body={"values": converted_values}
+        ).execute()
+
+        print(f"Inserted new column '{new_col_letter}' with header 'metric_tons' and wrote conversions successfully.")
+
+    except Exception as e:
+        print(f"Error inserting and converting to metric tons: {str(e)}")
+
+
+insert_and_convert_to_metric_tons(
+    sheet_service=sheet_service,
+    spreadsheet_id=ORIGINAL_SPREADSHEET_ID,
+    sheet_name=RANGE_NAME,
+    seizure_kg_col_letter='L',
+    quantity_col_letter='J',
+    weight_unit_col_letter='K'
+)
+
+
+#=================================================================0
+
+from googleapiclient.errors import HttpError
+import time
+
+def sync_sheets(spreadsheet_id, aligned_sheet_name, db_test_sheet_name, synced_sheet_name):
+    try:
+        # Get sheet metadata to find sheet IDs
+        spreadsheet = sheet_service.spreadsheets().get(
+            spreadsheetId=spreadsheet_id,
+            fields="sheets(properties(sheetId,title))"
+        ).execute()
+        
+        # Find sheet IDs
+        aligned_sheet_id = None
+        db_test_sheet_id = None
+        for sheet in spreadsheet['sheets']:
+            if sheet['properties']['title'] == aligned_sheet_name:
+                aligned_sheet_id = sheet['properties']['sheetId']
+            elif sheet['properties']['title'] == db_test_sheet_name:
+                db_test_sheet_id = sheet['properties']['sheetId']
+        
+        if aligned_sheet_id is None:
+            print(f"❌ Sheet '{aligned_sheet_name}' not found")
+            return False
+        
+        if db_test_sheet_id is None:
+            print(f"❌ Sheet '{db_test_sheet_name}' not found")
+            return False
+        
+        # Get data from both sheets
+        aligned_result = sheet_service.spreadsheets().values().get(
+            spreadsheetId=spreadsheet_id,
+            range=f"{aligned_sheet_name}"
+        ).execute()
+        
+        db_test_result = sheet_service.spreadsheets().values().get(
+            spreadsheetId=spreadsheet_id,
+            range=f"{db_test_sheet_name}"
+        ).execute()
+        
+        aligned_values = aligned_result.get('values', [])
+        db_test_values = db_test_result.get('values', [])
+        
+        if not aligned_values:
+            print("❌ No data found in aligned sheet")
+            return False
+        
+        if not db_test_values:
+            print("❌ No data found in db-test sheet")
+            return False
+        
+        # Verify both sheets have the same headers
+        aligned_headers = aligned_values[0]
+        db_test_headers = db_test_values[0]
+        
+        if aligned_headers != db_test_headers:
+            print("❌ Headers don't match between sheets")
+            print(f"Aligned headers: {aligned_headers}")
+            print(f"DB Test headers: {db_test_headers}")
+            return False
+        
+        headers = aligned_headers
+        
+        # Find UID column index
+        try:
+            uid_index = headers.index('uid')
+        except ValueError:
+            print("❌ 'uid' column not found in headers")
+            return False
+        
+        # Create a mapping of UID to row data for db-test sheet (for quick lookup)
+        db_test_dict = {}
+        for row_index, row in enumerate(db_test_values[1:], start=2):  # start=2 because we skip header
+            if len(row) > uid_index:
+                uid = str(row[uid_index])
+                if uid:
+                    # Store both the row data and its original position
+                    db_test_dict[uid] = {
+                        'data': row + [''] * (len(headers) - len(row)),  # Pad with empty values
+                        'original_position': row_index
+                    }
+        
+        # Process aligned sheet while preserving order
+        merged_rows = []
+        seen_uids = set()
+        
+        # First, add all rows from aligned sheet in their original order
+        for row in aligned_values[1:]:
+            if len(row) > uid_index:
+                uid = str(row[uid_index])
+                if uid:
+                    # If this UID exists in db-test, use that data instead
+                    if uid in db_test_dict:
+                        merged_rows.append(db_test_dict[uid]['data'])
+                        seen_uids.add(uid)
+                    else:
+                        # Pad with empty values if needed
+                        padded_row = row + [''] * (len(headers) - len(row))
+                        merged_rows.append(padded_row)
+                        seen_uids.add(uid)
+        
+        # Then, add any rows from db-test that weren't in aligned sheet
+        # We need to preserve the original order from db-test
+        remaining_db_test_rows = []
+        
+        for row in db_test_values[1:]:
+            if len(row) > uid_index:
+                uid = str(row[uid_index])
+                if uid and uid not in seen_uids:
+                    # Pad with empty values if needed
+                    padded_row = row + [''] * (len(headers) - len(row))
+                    remaining_db_test_rows.append((db_test_dict[uid]['original_position'], padded_row))
+        
+        # Sort by original position and add to merged rows
+        remaining_db_test_rows.sort(key=lambda x: x[0])
+        for _, row in remaining_db_test_rows:
+            merged_rows.append(row)
+        
+        # Prepare values for writing (headers + merged rows)
+        values = [headers] + merged_rows
+        
+        # Check if synced sheet exists
+        try:
+            # Try to get the sheet to see if it exists
+            sheet_service.spreadsheets().values().get(
+                spreadsheetId=spreadsheet_id,
+                range=f"{synced_sheet_name}!A1"
+            ).execute()
+            
+            # Clear existing sheet if it exists
+            clear_request = {
+                "ranges": [f"{synced_sheet_name}"]
+            }
+            sheet_service.spreadsheets().values().batchClear(
+                spreadsheetId=spreadsheet_id,
+                body=clear_request
+            ).execute()
+            
+        except HttpError:
+            # Sheet doesn't exist, create it
+            batch_update_request = {
+                'requests': [{
+                    'addSheet': {
+                        'properties': {
+                            'title': synced_sheet_name
+                        }
+                    }
+                }]
+            }
+            sheet_service.spreadsheets().batchUpdate(
+                spreadsheetId=spreadsheet_id,
+                body=batch_update_request
+            ).execute()
+            print(f"✅ Created new sheet: {synced_sheet_name}")
+        
+        # Write data to synced sheet
+        update_request = {
+            'values': values
+        }
+        sheet_service.spreadsheets().values().update(
+            spreadsheetId=spreadsheet_id,
+            range=f"{synced_sheet_name}",
+            valueInputOption='RAW',
+            body=update_request
+        ).execute()
+        
+        # Get the synced sheet ID
+        synced_sheet_id = get_sheet_id(spreadsheet_id, synced_sheet_name)
+        
+        # Copy formatting from aligned sheet
+        copy_format_requests = [
+            {
+                'copyPaste': {
+                    'source': {
+                        'sheetId': aligned_sheet_id,
+                        'startRowIndex': 0,
+                        'endRowIndex': 1,  # Header row
+                        'startColumnIndex': 0,
+                        'endColumnIndex': len(headers)
+                    },
+                    'destination': {
+                        'sheetId': synced_sheet_id,
+                        'startRowIndex': 0,
+                        'endRowIndex': 1,
+                        'startColumnIndex': 0,
+                        'endColumnIndex': len(headers)
+                    },
+                    'pasteType': 'PASTE_FORMAT'
+                }
+            },
+            {
+                'copyPaste': {
+                    'source': {
+                        'sheetId': aligned_sheet_id,
+                        'startRowIndex': 1,  # Data rows
+                        'endRowIndex': len(aligned_values),
+                        'startColumnIndex': 0,
+                        'endColumnIndex': len(headers)
+                    },
+                    'destination': {
+                        'sheetId': synced_sheet_id,
+                        'startRowIndex': 1,
+                        'endRowIndex': len(values),
+                        'startColumnIndex': 0,
+                        'endColumnIndex': len(headers)
+                    },
+                    'pasteType': 'PASTE_FORMAT'
+                }
+            }
+        ]
+        
+        # Apply formatting
+        batch_update_request = {
+            'requests': copy_format_requests
+        }
+        
+        sheet_service.spreadsheets().batchUpdate(
+            spreadsheetId=spreadsheet_id,
+            body=batch_update_request
+        ).execute()
+        
+        # Auto-resize columns to fit content
+        auto_resize_request = {
+            'requests': [{
+                'autoResizeDimensions': {
+                    'dimensions': {
+                        'sheetId': synced_sheet_id,
+                        'dimension': 'COLUMNS',
+                        'startIndex': 0,
+                        'endIndex': len(headers)
+                    }
+                }
+            }]
+        }
+        
+        sheet_service.spreadsheets().batchUpdate(
+            spreadsheetId=spreadsheet_id,
+            body=auto_resize_request
+        ).execute()
+        
+        print(f"✅ Successfully created/updated synced sheet '{synced_sheet_name}' with formatting")
+        print(f"📊 Total records: {len(merged_rows)}")
+        print(f"📁 Records from aligned: {len(aligned_values) - 1}")
+        print(f"📁 Records from db-test: {len(db_test_values) - 1}")
+        print(f"📁 Unique records in synced sheet: {len(merged_rows)}")
+        
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+def get_sheet_id(spreadsheet_id, sheet_name):
+    """Helper function to get sheet ID by name"""
+    spreadsheet = sheet_service.spreadsheets().get(
+        spreadsheetId=spreadsheet_id,
+        fields="sheets(properties(sheetId,title))"
+    ).execute()
+    
+    for sheet in spreadsheet['sheets']:
+        if sheet['properties']['title'] == sheet_name:
+            return sheet['properties']['sheetId']
+    
+    raise ValueError(f"Sheet '{sheet_name}' not found")
+
+
+sync_sheets(
+    spreadsheet_id=ORIGINAL_SPREADSHEET_ID,
+    aligned_sheet_name="aligned",
+    db_test_sheet_name="db-test",
+    synced_sheet_name="synced"
+)
+
+----------------------
+
+from googleapiclient.errors import HttpError
+
+def merge_sheets(spreadsheet_id, aligned_sheet_name, db_test_sheet_name):
+    try:
+        # Get sheet metadata
+        spreadsheet = sheet_service.spreadsheets().get(
+            spreadsheetId=spreadsheet_id,
+            fields="sheets(properties(sheetId,title,gridProperties(rowCount,columnCount)))"
+        ).execute()
+        
+        # Verify both sheets exist and get their properties
+        sheet_properties = {}
+        for sheet in spreadsheet['sheets']:
+            title = sheet['properties']['title']
+            if title in [aligned_sheet_name, db_test_sheet_name]:
+                sheet_properties[title] = {
+                    'id': sheet['properties']['sheetId'],
+                    'rowCount': sheet['properties']['gridProperties']['rowCount'],
+                    'columnCount': sheet['properties']['gridProperties']['columnCount']
+                }
+        
+        if aligned_sheet_name not in sheet_properties:
+            print(f"❌ Sheet '{aligned_sheet_name}' not found")
+            return False
+        
+        if db_test_sheet_name not in sheet_properties:
+            print(f"❌ Sheet '{db_test_sheet_name}' not found")
+            return False
+        
+        # Get data from both sheets
+        aligned_result = sheet_service.spreadsheets().values().get(
+            spreadsheetId=spreadsheet_id,
+            range=f"{aligned_sheet_name}"
+        ).execute()
+        
+        db_test_result = sheet_service.spreadsheets().values().get(
+            spreadsheetId=spreadsheet_id,
+            range=f"{db_test_sheet_name}"
+        ).execute()
+        
+        aligned_values = aligned_result.get('values', [])
+        db_test_values = db_test_result.get('values', [])
+        
+        if not aligned_values:
+            print("❌ No data found in aligned sheet")
+            return False
+        
+        if not db_test_values:
+            print("❌ No data found in db-test sheet")
+            return False
+        
+        # Verify both sheets have the same headers
+        aligned_headers = aligned_values[0]
+        db_test_headers = db_test_values[0]
+        
+        if aligned_headers != db_test_headers:
+            print("❌ Headers don't match between sheets")
+            print(f"Aligned headers: {aligned_headers}")
+            print(f"DB Test headers: {db_test_headers}")
+            return False
+        
+        headers = aligned_headers
+        
+        # Find UID column index
+        try:
+            uid_index = headers.index('uid')
+        except ValueError:
+            print("❌ 'uid' column not found in headers")
+            return False
+        
+        # Create a set of all UIDs in db-test sheet for quick lookup
+        existing_uids = set()
+        for row in db_test_values[1:]:  # Skip header row
+            if len(row) > uid_index:
+                uid = str(row[uid_index])
+                if uid:
+                    existing_uids.add(uid)
+        
+        # Find new rows in aligned sheet that aren't in db-test
+        new_rows = []
+        for row in aligned_values[1:]:  # Skip header row
+            if len(row) > uid_index:
+                uid = str(row[uid_index])
+                if uid and uid not in existing_uids:
+                    # Pad the row with empty values if it's shorter than headers
+                    padded_row = row + [''] * (len(headers) - len(row))
+                    new_rows.append(padded_row)
+        
+        if not new_rows:
+            print("✅ No new rows to merge from aligned to db-test")
+            return True
+        
+        # Check if we need to expand the db-test sheet
+        current_db_test_rows = len(db_test_values)
+        needed_rows = current_db_test_rows + len(new_rows)
+        current_max_rows = sheet_properties[db_test_sheet_name]['rowCount']
+        db_test_sheet_id = sheet_properties[db_test_sheet_name]['id']
+        
+        if needed_rows > current_max_rows:
+            print(f"⚠️ Sheet needs expansion: {needed_rows} rows needed, current limit: {current_max_rows}")
+            
+            # Expand the sheet
+            resize_request = {
+                'requests': [{
+                    'updateSheetProperties': {
+                        'properties': {
+                            'sheetId': db_test_sheet_id,
+                            'gridProperties': {
+                                'rowCount': needed_rows + 100,  # Add buffer of 100 rows
+                                'columnCount': sheet_properties[db_test_sheet_name]['columnCount']
+                            }
+                        },
+                        'fields': 'gridProperties(rowCount,columnCount)'
+                    }
+                }]
+            }
+            
+            sheet_service.spreadsheets().batchUpdate(
+                spreadsheetId=spreadsheet_id,
+                body=resize_request
+            ).execute()
+            
+            print(f"✅ Expanded '{db_test_sheet_name}' from {current_max_rows} to {needed_rows + 100} rows")
+        
+        # Append new rows to db-test sheet
+        update_range = f"{db_test_sheet_name}!A{current_db_test_rows + 0}"
+        
+        update_request = {
+            'values': new_rows
+        }
+        
+        sheet_service.spreadsheets().values().update(
+            spreadsheetId=spreadsheet_id,
+            range=update_range,
+            valueInputOption='RAW',
+            body=update_request
+        ).execute()
+        
+        print(f"✅ Successfully merged {len(new_rows)} new rows from '{aligned_sheet_name}' to '{db_test_sheet_name}'")
+        print(f"📊 Total rows in db-test after merge: {current_db_test_rows + len(new_rows)}")
+        
+        return True
+        
+    except HttpError as e:
+        if "exceeds grid limits" in str(e):
+            print("❌ Error: Cannot add rows - sheet has reached its maximum capacity")
+            print("💡 Solution: The sheet expansion might have failed due to Google Sheets limitations")
+        else:
+            print(f"❌ HTTP Error: {e}")
+        return False
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+# Call the function
+merge_sheets(
+    spreadsheet_id=ORIGINAL_SPREADSHEET_ID,
+    aligned_sheet_name="aligned",
+    db_test_sheet_name="db-test"
+)
+
+-----
+
+
+def drugs_and_quantities_report(df_a_aligned):
+    
+    DRUG_COLS = category_mapping["Drugs & Quantities"]
+    report = []
+    issues = {}
+    total_problems = 0
+
+    # Helper function
+    def to_excel_rows(indices):
+        return [i+2 for i in indices]  # Convert pandas index to spreadsheet rows
+
+    def register_issue(name, problematic_df_a_aligned, description):
+        nonlocal total_problems
+        issue_rows = problematic_df_a_aligned.index.tolist()
+        issues[name] = {
+            'indices': issue_rows,
+            'excel_rows': to_excel_rows(issue_rows),
+            'sample': problematic_df_a_aligned,
+            'description': description
+        }
+        count = len(issue_rows)
+        total_problems += count
+        return count
+
+
+
+    # Validation 1: Drug type 
+    if 'drug_type' in df_a_aligned.columns:
+        invalid_drugs = df_a_aligned[df_a_aligned['drug_type'].isna() | df_a_aligned['drug_type'].str.lower().isin(['', 'unknown', 'n/a', 'na'])]
+        if not invalid_drugs.empty:
+            count = register_issue(
+                'invalid_drug_types',
+                invalid_drugs,
+                "Missing or invalid drug type values"
+            )
+            report.append(("Drug Type Issues", f"{count} invalid/missing drug types"))
+
+
+
+
+
+
+    # # Validation 1: Check for missing critical columns
+    # missing_cols = [col for col in DRUG_COLS if col not in df_a_aligned.columns]
+    # if missing_cols:
+    #     report.append(("❌ Missing Columns", f"{len(missing_cols)} key columns missing: {', '.join(missing_cols)}"))
+    #     total_problems += len(missing_cols)
+
+    # Validation 2: Drug type validations
+    if 'drug_type' in df_a_aligned.columns:
+        invalid_drugs = df_a_aligned[df_a_aligned['drug_type'].isna() | df_a_aligned['drug_type'].str.lower().isin(['', 'unknown', 'n/a', 'na'])]
+        if not invalid_drugs.empty:
+            count = register_issue(
+                'invalid_drug_types',
+                invalid_drugs,
+                "Missing or invalid drug type values"
+            )
+            report.append(("Drug Type Issues", f"{count} invalid/missing drug types"))
+
+    # Validation 3: Quantity validations
+    if 'quantity' in df_a_aligned.columns:
+        # Case 1: Non-numeric quantities
+        numeric_qty = pd.to_numeric(df_a_aligned['quantity'], errors='coerce')
+        non_numeric = df_a_aligned[numeric_qty.isna()]
+        
+        # Case 2: Zero/negative quantities
+        invalid_values = df_a_aligned[(numeric_qty.notna()) & (numeric_qty <= 0)]
+        
+        qty_issues = pd.concat([non_numeric, invalid_values]).drop_duplicates()
+        if not qty_issues.empty:
+            count = register_issue(
+                'invalid_quantities',
+                qty_issues,
+                "Non-numeric or zero/negative quantities"
+            )
+            report.append(("Quantity Issues", f"{count} invalid quantities"))
+
+    # Validation 4: Weight unit validations
+    if 'weight_unit' in df_a_aligned.columns:
+        valid_units = dropdown_options.get('weight_unit', [])
+        valid_units_lower = [str(u).lower() for u in valid_units]
+        
+        invalid_units = df_a_aligned[
+            ~df_a_aligned['weight_unit'].astype(str).str.lower().isin(valid_units_lower)
+            | df_a_aligned['weight_unit'].isna()
+        ]
+        
+        if not invalid_units.empty:
+            count = register_issue(
+                'invalid_weight_units',
+                invalid_units,
+                f"Invalid weight units (valid: {', '.join(valid_units)})"
+            )
+            report.append(("Weight Unit Issues", f"{count} invalid units"))
+
+    # Validation 5: Seizure weight consistency
+    if all(col in df_a_aligned.columns for col in ['seizure_kg', 'weight_unit', 'quantity']):
+        # Convert to numeric (handling errors)
+        seizure_numeric = pd.to_numeric(df_a_aligned['seizure_kg'], errors='coerce')
+        qty_numeric = pd.to_numeric(df_a_aligned['quantity'], errors='coerce')
+        
+        # Case 1: Invalid seizure values
+        invalid_seizure = df_a_aligned[seizure_numeric.isna() | (seizure_numeric < 0)]
+        
+        # Case 2: Kilogram unit mismatch
+        kg_mismatch = df_a_aligned[
+            (df_a_aligned['weight_unit'].str.lower() == 'kilogram') &
+            (qty_numeric.notna()) &
+            (seizure_numeric.notna()) &
+            (qty_numeric != seizure_numeric)
+        ]
+        
+        seizure_issues = pd.concat([invalid_seizure, kg_mismatch]).drop_duplicates()
+        if not seizure_issues.empty:
+            count = register_issue(
+                'seizure_weight_issues',
+                seizure_issues,
+                "Invalid seizure weights or kilogram mismatches"
+            )
+            report.append(("Seizure Weight Issues", f"{count} problems found"))
+
+    # Generate the report
+    print("="*80)
+    print(f"DRUGS & QUANTITIES VALIDATION REPORT".center(80))
+    print(f"Total Issues Found: {total_problems}".center(80))
+    print("="*80)
+    
+    # Summary Section
+    print("\nSUMMARY CHECKS:")
+    for check, message in report:
+        print(f"• {check:<20} {message}")
+    
+    # Detailed Findings
+    if issues:
+        print("\n" + "="*80)
+        print("DETAILED ISSUES".center(80))
+        print("="*80)
+        
+        for issue_name, data in issues.items():
+            print(f"\n❗ {data['description'].upper()}")
+            print(f"   Rows affected: {len(data['indices'])} (Spreadsheet rows: {data['excel_rows']})")
+            print("\nSample Data:")
+            print(data['sample'].head(3).to_string(index=False))
+            print("-"*60)
+    
+    print("\n" + "="*80)
+    print("Note: Spreadsheet rows account for header (pandas index + 2)".center(80))
+    print("="*80)
+    
+    return {
+        'report': report,
+        'issues': issues,
+        'total_problems': total_problems
+    }
+
+# Usage (identical to Event Metadata report)
+validation_results = drugs_and_quantities_report(df_a_aligned)
+
+
+
+
+
+
+
+
+#####################
+
+def detect_suspicious_duplicates(df_b):
+    """
+    Detects suspicious duplicate rows that might represent the same seizure event,
+    based on having identical values for 'quantity', 'weight_unit', 'country',
+    and 'modus_operandi'.
+    """
+
+    DUPLICATE_KEY_COLS = ["quantity", "weight_unit", "country", "modus_operandi"]
+    report = []
+    issues = {}
+    total_problems = 0
+
+    # Helper functions
+    def to_excel_rows(indices):
+        return [i + 2 for i in indices]  # +2 to match spreadsheet rows (header +1)
+
+    def register_issue(name, problematic_df_b, description):
+        nonlocal total_problems
+        issue_rows = problematic_df_b.index.tolist()
+        issues[name] = {
+            'indices': issue_rows,
+            'excel_rows': to_excel_rows(issue_rows),
+            'sample': problematic_df_b,
+            'description': description
+        }
+        count = len(issue_rows)
+        total_problems += count
+        return count
+
+    # Validation 1: Missing columns
+    missing_cols = [col for col in DUPLICATE_KEY_COLS if col not in df_b.columns]
+    if missing_cols:
+        report.append((
+            "❌ Missing Columns",
+            f"Required columns missing: {', '.join(missing_cols)}"
+        ))
+        total_problems += len(missing_cols)
+        return {'report': report, 'issues': issues, 'total_problems': total_problems}
+
+    # Validation 2: Detect duplicate groups
+    dup_groups = (
+        df_b[df_b.duplicated(subset=DUPLICATE_KEY_COLS, keep=False)]
+        .sort_values(by=DUPLICATE_KEY_COLS)
+    )
+
+    if dup_groups.empty:
+        report.append(("✅ No Duplicates", "No suspicious duplicate events found."))
+    else:
+        count = register_issue(
+            "potential_duplicates",
+            dup_groups,
+            "Potential duplicate seizure events with identical key fields."
+        )
+        report.append((
+            "⚠️ Possible Duplicate Events",
+            f"{count} records appear duplicated across key variables: "
+            f"{', '.join(DUPLICATE_KEY_COLS)}"
+        ))
+
+    # Report summary
+    print("=" * 80)
+    print("SUSPICIOUS DUPLICATE DETECTION REPORT".center(80))
+    print(f"Total Potential Duplicates: {total_problems}".center(80))
+    print("=" * 80)
+
+    for check, message in report:
+        print(f"• {check:<25} {message}")
+
+    if issues:
+        print("\n" + "=" * 80)
+        print("DETAILED DUPLICATE GROUPS".center(80))
+        print("=" * 80)
+
+        grouped = dup_groups.groupby(DUPLICATE_KEY_COLS)
+        for key, group in grouped:
+            print(f"\n🔁 Duplicate Group: {key}")
+            print(f"   Rows affected: {group.shape[0]} (Spreadsheet rows: {to_excel_rows(group.index.tolist())})")
+            print(group.to_string(index=False))
+            print("-" * 60)
+
+    print("\n" + "=" * 80)
+    print("Note: Spreadsheet rows = pandas index + 2".center(80))
+    print("=" * 80)
+
+    return {
+        'report': report,
+        'issues': issues,
+        'total_problems': total_problems
+    }
+
+# Run the duplicate detection
+duplicate_results = detect_suspicious_duplicates(df_b)
+
+
+
+
+
+# Extract the duplicate table from the function output
+dup_df = duplicate_results['issues'].get('potential_duplicates', {}).get('sample', None)
+
+# Display the duplicates if any exist
+if dup_df is not None and not dup_df.empty:
+    print("Potential duplicate records:")
+    display(dup_df)  # works well in Jupyter / RStudio notebooks
+else:
+    print("No potential duplicates found.")  

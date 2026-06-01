@@ -1,0 +1,5 @@
+# PowerShell commands to project information
+!powershell -command "Get-Date"
+!powershell -command """"Total Items: $((Get-ChildItem).Count)" "Files: $((Get-ChildItem -File).Count)" "Directories: $((Get-ChildItem -Directory).Count)""""
+!powershell -command "Get-ChildItem | Sort-Object LastWriteTime -Descending"
+#----------------------------------------------------------
